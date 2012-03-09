@@ -3,36 +3,69 @@
 """
 Running this script spits out a random Pac-Man maze
 
-a current example:
+example with extend phase off:
 ||||||||||||||||||||||||||||
 |..........................|
-|.|||.||.||.||||.||.||.|||.|
-|.|||.||.||.||||.||.||.|||.|
-|........||.||||.||........|
-|.||.|||.||.||||.||.|||.||.|
-|.||.|||............|||.||.|
-|.||.|||||.||..||.|||||.||.|
-|......|||.||..||.|||......|
-|.||||.|||.||..||.|||.||||.|
-|.||||.|||.||..||.|||.||||.|
-|..........................|
-|.|||.|||.||||||||.|||.|||.|
+|.||||.||.||||||||.||.||||.|
+|.||||.||.||||||||.||.||||.|
+|.||||......||||......||||.|
+|.||||.||||..||..||||.||||.|
+|......|||||.||.|||||......|
+|.||||.|||||....|||||.||||.|
+|.||||.|||||.||.|||||.||||.|
+|.||||.|||||.||.|||||.||||.|
+|.........||.||.||.........|
+|.|||.|||..........|||.|||.|
 |.|||.|||.||||||||.|||.|||.|
 |.|||.....||||||||.....|||.|
-|.....|||.||||||||.|||.....|
+|.|||.|||.||||||||.|||.|||.|
+|.|||.|||.||||||||.|||.|||.|
+|.........||||||||.........|
+|.||||.||..........||.||||.|
+|.||||.||||.||||.||||.||||.|
+|........||.||||.||........|
+|.|||.||.||......||.||.|||.|
+|.|||.||.....||.....||.|||.|
+|......||.||.||.||.||......|
+|.||||.||.||.||.||.||.||||.|
+|.||||................||||.|
+|......||.||||||||.||......|
+|.||||.||.||||||||.||.||||.|
+|.||||.||.||||||||.||.||||.|
+|.||||.||.||||||||.||.||||.|
+|..........................|
+||||||||||||||||||||||||||||
+
+example with extend phase on:
+||||||||||||||||||||||||||||
+|..........................|
+|.|||.||||.||||||.||||.|||.|
+|.|||.||||.||||||.||||.|||.|
+|.|||......||||||......|||.|
+|.||||||||........||||||||.|
+|.||||||||.||..||.||||||||.|
+|..........||..||..........|
+|.|||||||.||....||.|||||||.|
+|.|||||||.||||||||.|||||||.|
+|....||||.||||||||.||||....|
+|.||.||||..........||||.||.|
 |.||.||||.||||||||.||||.||.|
-|.||.|||............|||.||.|
-|....|||.||.||||.||.|||....|
-|.||.....||.||||.||.....||.|
-|.||.|||.||......||.|||.||.|
-|....|||.||.||||.||.|||....|
-|.||.|||....||||....|||.||.|
-|.||.|||.||......||.|||.||.|
-|.....||.||.||||.||.||.....|
-|.|||.||.||.||||.||.||.|||.|
-|.|||..................|||.|
-|.|||.|||.||.||.||.|||.|||.|
-|.|||.|||.||.||.||.|||.|||.|
+|.||......||||||||......||.|
+|.||..|||.||||||||.|||..||.|
+|.||..|||.||||||||.|||..||.|
+|.||.||||.||||||||.||||.||.|
+|.||.||..............||.||.|
+|.......||.||||||.||.......|
+|.||||||||.||||||.||||||||.|
+|.||||||||.||||||.||||||||.|
+|.......||.||||||.||.......|
+|.|||||.||.||||||.||.|||||.|
+|.|||||.||........||.|||||.|
+|...........||||...........|
+|.|||||.|||.||||.|||.|||||.|
+|.|||||.|||.||||.|||.|||||.|
+|.|||||.|||.||||.|||.|||||.|
+|.|||||.|||.||||.|||.|||||.|
 |..........................|
 ||||||||||||||||||||||||||||
 
@@ -41,6 +74,7 @@ OVERVIEW:
 This currently works by starting with an empty half map with a ghost
 house.
 
+PLACE PHASE
 We add walls by placing 2x2 blocks in areas that allow for a one
 tile wide margin.
 
@@ -49,6 +83,7 @@ tile wide margin.
 .... > .||.
 ....   ....
 
+GROW PHASE
 After placing a new wall piece, a gap-filling heuristic is used to grow the piece. 
 Basically, the wall is grown to fill in adjacent areas that cannot be filled by new pieces.
 
@@ -62,16 +97,23 @@ Basically, the wall is grown to fill in adjacent areas that cannot be filled by 
 
   (start)     (new piece)  (after growth)
 
+EXTEND PHASE
+An additional extend phase is employed which applies contiguous blocks
+in a straight random direction, and starting again in the same direction
+but rotated 90 degrees.  The turning is triggered by a certain distance
+traveled or by a dead end.  Each block that is placed also undergoes
+its own grow phase to fill in gaps along the way.
+
 
 CURRENT PROBLEMS:
 
 Walls are very fragmented.  Make the pieces grow more by extending in a random direction after initial mandatory growing.
-
 We could alternatively do a post-process to join smaller pieces together:
 .......   .......
 .||.||. > .|||||.
 .||.||.   .|||||.
 .......   .......
+(One solution is the extend phase mentioned above)
 
 Some gaps aren't filled, need to study them some more and add appropriate test cases.
 
@@ -96,6 +138,17 @@ import random
 # Box Obstacle
 # Line Obstacle
 # map from tile to Obstacle
+
+def all(iter):
+    for e in iter:
+        if not e: return False
+    return True
+
+def any(iter):
+    for e in iter:
+        if e: return True
+    return False
+
 
 # takes multi-line map string, trims indentation, replaces newlines with given separator
 def format_map_str(tiles,sep):
@@ -157,6 +210,9 @@ class Map:
         if self.xy_valid(x,y):
             self.tiles[x+y*self.w] = '|'
 
+    def is_wall_block_filled(self,x,y):
+        return all(self.get_tile(x+dx,y+dy) == '|' for dy in range(1,3) for dx in range(1,3))
+
     # adds a 2x2 block inside the 4x4 block at the given x,y coordinate 
     def add_wall_block(self,x,y):
         self.add_wall_tile(x+1,y+1)
@@ -212,14 +268,10 @@ class Map:
         if (x,y) in self.pos_list:
             connect(x+dx,y+dy)
             connect(x+2*dx,y+2*dy)
-            if not (x-dy,y-dx) in self.pos_list:
-                connect(x+dx-dy,y+dy-dx)
-            if not (x+dy,y+dx) in self.pos_list:
-                connect(x+dx+dy,y+dy+dx)
-            if not (x+dx-dy,y+dy-dx) in self.pos_list:
-                connect(x+2*dx-dy, y+2*dy-dx)
-            if not (x+dx+dy,y+dy+dx) in self.pos_list:
-                connect(x+2*dx+dy, y+2*dy+dx)
+            if not (x-dy,y-dx) in self.pos_list: connect(x+dx-dy,y+dy-dx)
+            if not (x+dy,y+dx) in self.pos_list: connect(x+dx+dy,y+dy+dx)
+            if not (x+dx-dy,y+dy-dx) in self.pos_list: connect(x+2*dx-dy, y+2*dy-dx)
+            if not (x+dx+dy,y+dy+dx) in self.pos_list: connect(x+2*dx+dy, y+2*dy+dx)
 
     # update the starting positions and dependencies
     def update(self):
@@ -227,43 +279,104 @@ class Map:
         self.update_connections()
 
     # expand a wall block at the given x,y
+    # return number of tiles added
     def expand_wall(self,x,y):
         visited = []
         def expand(x,y):
+            count = 0
             src = (x,y)
             if src in visited:
-                return
+                return 0
             visited.append(src)
             if src in self.connections:
                 for x0,y0 in self.connections[src]:
-                    self.add_wall_block(x0,y0)
-                    expand(x0,y0)
+                    if not self.is_wall_block_filled(x0,y0):
+                        count += 1
+                        self.add_wall_block(x0,y0)
+                    count += expand(x0,y0)
+            return count
+        return expand(x,y)
 
-        expand(x,y)
-        return (x,y) in self.connections
+    def get_most_open_dir(self,x,y):
+        dirs = ((0,-1),(0,1),(1,0),(-1,0))
+        max_dir = random.choice(dirs)
+        max_len = 0
+        for dx,dy in dirs:
+            len = 0
+            while (x+dx*len,y+dy*len) in self.pos_list:
+                len += 1
+            if len > max_len:
+                max_dir = (dx,dy)
+                max_len = len
+        return max_dir
 
     # start a wall at block x,y
-    def add_wall_obstacle(self,x=None,y=None):
+    def add_wall_obstacle(self,x=None,y=None,extend=False):
         self.update()
         if not self.pos_list:
             return False
 
+        # choose random valid starting position if none provided
         if (x is None or y is None):
             x,y = random.choice(self.pos_list)
-        self.add_wall_block(x,y)
-        map_before = str(self)
 
+        # add first block
+        self.add_wall_block(x,y)
+
+        # initialize verbose print lines
+        first_lines = str(self).splitlines()
+        grow_lines = [""]*(self.h+2)
+        extend_lines = [""]*(self.h+2)
+
+        # mandatory grow phase
+        count = self.expand_wall(x,y)
+        if count > 0:
+            grow_lines = str(self).splitlines()
+
+        # extend phase
+        if extend:
+
+            # desired maximum block size
+            max_blocks = 4
+
+            # 35% chance of forcing the block to turn
+            # turn means the turn has been taken
+            # turn_blocks is the number of blocks traveled before turning
+            turn = False
+            turn_blocks = max_blocks
+            if random.random() <= 0.35:
+                turn_blocks = 4
+                max_blocks += turn_blocks
+
+            # choose a random direction
+            dx,dy = random.choice(((0,-1),(0,1),(1,0),(-1,0)))
+            orig_dir = (dx,dy)
+
+            i = 0
+            while count < max_blocks:
+                x0 = x+dx*i
+                y0 = y+dy*i
+                # turn if we're past turning point or at a dead end
+                if (not turn and count >= turn_blocks) or not (x0,y0) in self.pos_list:
+                    turn = True
+                    dx,dy = -dy,dx # rotate
+                    i = 1
+                    # stop if we've come full circle
+                    if orig_dir == (dx,dy): break
+                    else: continue
+
+                # add wall block and grow to fill gaps
+                if not self.is_wall_block_filled(x0,y0):
+                    self.add_wall_block(x0,y0)
+                    count += 1 + self.expand_wall(x0,y0)
+                i += 1
+            extend_lines = str(self).splitlines()
+
+        # print the map states after each phase for debugging
         if self.verbose:
             print "added block at ",x,y
-        if self.expand_wall(x,y):
-            if self.verbose:
-                for line1,line2 in zip(map_before.splitlines(),str(self).splitlines()):
-                    print line1, line2
-        else:
-            if self.verbose:
-                print map_before
-
-        dirEnum = random.choice(((0,-1),(0,1),(1,0),(-1,0)))
+            for a,b,c in zip(first_lines, grow_lines, extend_lines):
+                print a,b,c
 
         return True
 
@@ -309,10 +422,10 @@ if __name__ == "__main__":
         tileMap.verbose = True
 
     # generate map by adding walls until there's no more room
-    while tileMap.add_wall_obstacle():
+    while tileMap.add_wall_obstacle(extend=True):
         pass
 
     # reflect the first 14 columns to print the map
     for line in str(tileMap).splitlines():
-        s = line[:-2]
+        s = line[:14]
         print s+s[::-1]
