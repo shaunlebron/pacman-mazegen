@@ -103,19 +103,5 @@ class MapTest(unittest.TestCase):
             .........||.||.
             """)
 
-    def test5(self):
-        self.tileMap = Map(10,8,"""
-            ..........
-            ......||..
-            ......||..
-            ......||..
-            ......||..
-            ..........
-            .....||...
-            .....||...
-            """)
-        self.tileMap.add_wall_obstacle(1,0)
-        print str(self.tileMap)
-
 if __name__ == "__main__":
     unittest.main()

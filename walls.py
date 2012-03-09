@@ -3,6 +3,39 @@
 """
 Running this script spits out a random Pac-Man maze
 
+a current example:
+||||||||||||||||||||||||||||
+|..........................|
+|.|||.||.||.||||.||.||.|||.|
+|.|||.||.||.||||.||.||.|||.|
+|........||.||||.||........|
+|.||.|||.||.||||.||.|||.||.|
+|.||.|||............|||.||.|
+|.||.|||||.||..||.|||||.||.|
+|......|||.||..||.|||......|
+|.||||.|||.||..||.|||.||||.|
+|.||||.|||.||..||.|||.||||.|
+|..........................|
+|.|||.|||.||||||||.|||.|||.|
+|.|||.|||.||||||||.|||.|||.|
+|.|||.....||||||||.....|||.|
+|.....|||.||||||||.|||.....|
+|.||.||||.||||||||.||||.||.|
+|.||.|||............|||.||.|
+|....|||.||.||||.||.|||....|
+|.||.....||.||||.||.....||.|
+|.||.|||.||......||.|||.||.|
+|....|||.||.||||.||.|||....|
+|.||.|||....||||....|||.||.|
+|.||.|||.||......||.|||.||.|
+|.....||.||.||||.||.||.....|
+|.|||.||.||.||||.||.||.|||.|
+|.|||..................|||.|
+|.|||.|||.||.||.||.|||.|||.|
+|.|||.|||.||.||.||.|||.|||.|
+|..........................|
+||||||||||||||||||||||||||||
+
 OVERVIEW:
 
 This currently works by starting with an empty half map with a ghost
@@ -16,8 +49,8 @@ tile wide margin.
 .... > .||.
 ....   ....
 
-After placing a new wall piece, adjacent wall pieces are added to fill
-in adjacent areas that cannot be filled by new pieces.
+After placing a new wall piece, a gap-filling heuristic is used to grow the piece. 
+Basically, the wall is grown to fill in adjacent areas that cannot be filled by new pieces.
 
 ...........   ...........   ...........
 ...||......   ...||......   ...||......
@@ -32,12 +65,25 @@ in adjacent areas that cannot be filled by new pieces.
 
 CURRENT PROBLEMS:
 
-Walls are very fragmented.  Make the pieces grow more.
+Walls are very fragmented.  Make the pieces grow more by extending in a random direction after initial mandatory growing.
+
+We could alternatively do a post-process to join smaller pieces together:
+.......   .......
+.||.||. > .|||||.
+.||.||.   .|||||.
+.......   .......
 
 Some gaps aren't filled, need to study them some more and add appropriate test cases.
 
 There is currently a path around the entire border. 
 Could possibly extend some contiguous pieces to the border to fix this.
+
+Seems rare, but sometimes dead ends and single tile thick walls are formed.
+It could be easier to just throw out a map if this conditions are detected.
+
+Conditions:
+a 2x2 empty block => dead end
+a wall tile that is not part of a 2x2 wall block => single tile wall
 
 """
 
@@ -129,7 +175,7 @@ class Map:
                     return False
         return True
 
-    # updates the position list
+    # create a list of valid starting positions
     def update_pos_list(self):
         self.pos_list = []
         for y in xrange(self.h):
@@ -137,6 +183,22 @@ class Map:
                 if self.can_new_block_fit(x,y):
                     self.pos_list.append((x,y))
 
+    # A connection is a sort of dependency of one tile block on another.
+    # If a valid starting position is against another wall, then add this tile
+    # to other valid start positions' that intersect this one so that they fill
+    # it when they are chosen.  This filling is a heuristic to eliminate gaps.
+    def update_connections(self):
+        self.connections = {}
+        for y in xrange(self.h):
+            for x in xrange(self.w):
+                if (x,y) in self.pos_list:
+                    if any(self.get_tile(x-1,y+y0)=='|' for y0 in range(4)): self.add_connection(x,y,1,0)
+                    if any(self.get_tile(x+4,y+y0)=='|' for y0 in range(4)): self.add_connection(x,y,-1,0)
+                    if any(self.get_tile(x+x0,y-1)=='|' for x0 in range(4)): self.add_connection(x,y,0,1)
+                    if any(self.get_tile(x+x0,y+4)=='|' for x0 in range(4)): self.add_connection(x,y,0,-1)
+
+    # the block at x,y is against a wall, so make intersecting blocks in the direction of 
+    # dx,dy fill the block at x,y if they are filled first.
     def add_connection(self,x,y,dx,dy):
         def connect(x0,y0):
             src = (x,y)
@@ -159,21 +221,12 @@ class Map:
             if not (x+dx+dy,y+dy+dx) in self.pos_list:
                 connect(x+2*dx+dy, y+2*dy+dx)
 
-
-    def update_connections(self):
-        self.connections = {}
-        for y in xrange(self.h):
-            for x in xrange(self.w):
-                if (x,y) in self.pos_list:
-                    if any(self.get_tile(x-1,y+y0)=='|' for y0 in range(4)): self.add_connection(x,y,1,0)
-                    if any(self.get_tile(x+4,y+y0)=='|' for y0 in range(4)): self.add_connection(x,y,-1,0)
-                    if any(self.get_tile(x+x0,y-1)=='|' for x0 in range(4)): self.add_connection(x,y,0,1)
-                    if any(self.get_tile(x+x0,y+4)=='|' for x0 in range(4)): self.add_connection(x,y,0,-1)
-
+    # update the starting positions and dependencies
     def update(self):
         self.update_pos_list()
         self.update_connections()
 
+    # expand a wall block at the given x,y
     def expand_wall(self,x,y):
         visited = []
         def expand(x,y):
@@ -189,6 +242,7 @@ class Map:
         expand(x,y)
         return (x,y) in self.connections
 
+    # start a wall at block x,y
     def add_wall_obstacle(self,x=None,y=None):
         self.update()
         if not self.pos_list:
@@ -214,6 +268,8 @@ class Map:
         return True
 
 if __name__ == "__main__":
+
+    # initial empty map with standard ghost house
     tileMap = Map(16,31,"""
         ||||||||||||||||
         |...............
@@ -247,11 +303,16 @@ if __name__ == "__main__":
         |...............
         ||||||||||||||||
         """)
+
+    # verbosity option (-v)
     if len(sys.argv) > 1 and sys.argv[1] == "-v":
         tileMap.verbose = True
+
+    # generate map by adding walls until there's no more room
     while tileMap.add_wall_obstacle():
         pass
 
+    # reflect the first 14 columns to print the map
     for line in str(tileMap).splitlines():
         s = line[:-2]
         print s+s[::-1]
