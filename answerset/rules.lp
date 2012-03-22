@@ -11,12 +11,11 @@
 xdim(1..width).
 ydim(1..height).
 
-% TODO: figure out what 'choice' rules are.
-%   i.e. how is it different from this?:
-% wall(X,Y) :- xdim(X), ydim(Y).
-{ wall(X,Y) } :- xdim(X), ydim(Y).
+% choose arbitrary walls
+{ wall(X,Y) :xdim(X) :ydim(Y) }.
 
-path(X,Y) :- not wall(X,Y), X>1, X<width, Y>1, Y<height, xdim(X), ydim(Y).
+% define paths as tiles that are not walls
+path(X,Y) :- not wall(X,Y), xdim(X), ydim(Y).
 
 % put walls around the map
 wall(1,Y) :- ydim(Y).
@@ -24,18 +23,18 @@ wall(width,Y) :- ydim(Y).
 wall(X,1) :- xdim(X).
 wall(X,height) :- xdim(X).
 
-% ghost home
+% define ghost home
 wall(homeleft..homeright,hometop..homebottom).
 path(homeleft-1,hometop-1..homebottom+1).
 path(homeright+1,hometop-1..homebottom+1).
 path(homeleft-1..homeright+1,hometop-1).
 path(homeleft-1..homeright+1,homebottom+1).
 
-% pacman start
+% define pacman start
 path(pacx1..pacx2,pacy).
 
 % prevent fat paths:
-:- path(X,Y), path(X,Y+1), path(X+1,Y), path(X+1,Y+1), xdim(X), ydim(Y).
+:- path(X,Y), path(X,Y+1), path(X+1,Y), path(X+1,Y+1).
 
 % prevent this
 % |.
@@ -47,26 +46,25 @@ path(pacx1..pacx2,pacy).
 :- path(X,Y), path(X+1,Y+1), wall(X+1,Y), wall(X,Y+1).
 
 % prevent thin walls
-:- wall(X,Y), path(X+1,Y), path(X-1,Y), X > 1, X < width, xdim(X), ydim(Y).
-:- wall(X,Y), path(X,Y+1), path(X,Y-1), Y > 1, Y < height, xdim(X), ydim(Y).
+:- wall(X,Y), path(X+1,Y), path(X-1,Y).
+:- wall(X,Y), path(X,Y+1), path(X,Y-1).
 
 % prevent this
 %  |.
 % .|
-:- wall(X,Y), wall(X,Y+1), path(X+1,Y), path(X-1,Y+1), X>2, X<width-1, Y>1, Y<height, xdim(X), ydim(Y).
-:- wall(X,Y), wall(X,Y+1), path(X-1,Y), path(X+1,Y+1), X>2, X<width-1, Y>1, Y<height, xdim(X), ydim(Y).
+:- wall(X,Y), wall(X,Y+1), path(X+1,Y), path(X-1,Y+1).
+:- wall(X,Y), wall(X,Y+1), path(X-1,Y), path(X+1,Y+1).
 % .
 % ||
 %  .
-:- wall(X,Y), wall(X+1,Y), path(X,Y-1), path(X+1,Y+1), X>1, X<width-1, Y>1, Y<height, xdim(X), ydim(Y).
-:- wall(X,Y), wall(X+1,Y), path(X+1,Y-1), path(X,Y+1), X>1, X<width-1, Y>1, Y<height, xdim(X), ydim(Y).
+:- wall(X,Y), wall(X+1,Y), path(X,Y-1), path(X+1,Y+1).
+:- wall(X,Y), wall(X+1,Y), path(X+1,Y-1), path(X,Y+1).
 
 % prevent 2x2 wall island
 :- path(X,Y), path(X+1,Y), path(X+2,Y), path(X+3,Y),
   path(X,Y+1), path(X+3,Y+1),
   path(X,Y+2), path(X+3,Y+2),
-  path(X,Y+3), path(X+1,Y+3), path(X+2,Y+3), path(X+3,Y+3),
-  xdim(X), ydim(Y).
+  path(X,Y+3), path(X+1,Y+3), path(X+2,Y+3), path(X+3,Y+3).
 
 % prevent 3x3 wall
 :- wall(X,Y), wall(X+1,Y), wall(X+2,Y), wall(X,Y+1), wall(X+1,Y+1), wall(X+2,Y+1), wall(X,Y+2), wall(X+1,Y+2), wall(X+2,Y+2), X<homeleft.
@@ -75,17 +73,17 @@ path(pacx1..pacx2,pacy).
 :- wall(X,Y), wall(X+1,Y), wall(X+2,Y), wall(X,Y+1), wall(X+1,Y+1), wall(X+2,Y+1), wall(X,Y+2), wall(X+1,Y+2), wall(X+2,Y+2), Y>homebottom.
 
 % prevent dead ends
-:- path(X,Y), path(X,Y+1), wall(X-1,Y), wall(X+1,Y), wall(X,Y-1), xdim(X), ydim(Y).
-:- path(X,Y), path(X,Y-1), wall(X-1,Y), wall(X+1,Y), wall(X,Y+1), xdim(X), ydim(Y).
-:- path(X,Y), path(X-1,Y), wall(X,Y+1), wall(X,Y-1), wall(X+1,Y), xdim(X), ydim(Y).
-:- path(X,Y), path(X+1,Y), wall(X,Y+1), wall(X,Y-1), wall(X-1,Y), xdim(X), ydim(Y).
-:- path(X,Y), wall(X+1,Y), wall(X,Y+1), wall(X,Y-1), wall(X-1,Y), xdim(X), ydim(Y).
+:- path(X,Y), path(X,Y+1), wall(X-1,Y), wall(X+1,Y), wall(X,Y-1).
+:- path(X,Y), path(X,Y-1), wall(X-1,Y), wall(X+1,Y), wall(X,Y+1).
+:- path(X,Y), path(X-1,Y), wall(X,Y+1), wall(X,Y-1), wall(X+1,Y).
+:- path(X,Y), path(X+1,Y), wall(X,Y+1), wall(X,Y-1), wall(X-1,Y).
+:- path(X,Y), wall(X+1,Y), wall(X,Y+1), wall(X,Y-1), wall(X-1,Y).
 
 % prevent tight corners
-:- path(X,Y), path(X+1,Y), path(X+1,Y+1), path(X+2,Y+1), xdim(X), ydim(Y).
-:- path(X,Y), path(X-1,Y), path(X-1,Y+1), path(X-2,Y+1), xdim(X), ydim(Y).
-:- path(X,Y), path(X,Y+1), path(X+1,Y+1), path(X+1,Y+2), xdim(X), ydim(Y).
-:- path(X,Y), path(X,Y+1), path(X-1,Y+1), path(X-1,Y+2), xdim(X), ydim(Y).
+:- path(X,Y), path(X+1,Y), path(X+1,Y+1), path(X+2,Y+1).
+:- path(X,Y), path(X-1,Y), path(X-1,Y+1), path(X-2,Y+1).
+:- path(X,Y), path(X,Y+1), path(X+1,Y+1), path(X+1,Y+2).
+:- path(X,Y), path(X,Y+1), path(X-1,Y+1), path(X-1,Y+2).
 
 % prevent horizontal asymmetry
 :- wall(X,Y), path(width-X+1,Y).

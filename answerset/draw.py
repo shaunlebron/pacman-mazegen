@@ -1,14 +1,14 @@
 import sys,re
 
-def print_map(contents):
+def print_map(line):
   walls = {}
   xdim = {}
   ydim = {}
-  for m in re.finditer('wall\((\d+),(\d+)\)', contents):
+  for m in re.finditer('wall\((\d+),(\d+)\)', line):
     walls[(int(m.group(1)),int(m.group(2)))] = True
-  for m in re.finditer('xdim\((\d+)\)', contents):
+  for m in re.finditer('xdim\((\d+)\)', line):
     xdim[int(m.group(1))] = True
-  for m in re.finditer('ydim\((\d+)\)', contents):
+  for m in re.finditer('ydim\((\d+)\)', line):
     ydim[int(m.group(1))] = True
   for y in range(max(ydim.keys())):
     for x in range(max(xdim.keys())):
@@ -19,8 +19,8 @@ def print_map(contents):
     print ''
 
 if __name__ == "__main__":
-  for contents in re.split("Answer:", sys.stdin.read()):
-    if not contents.strip():
-      continue
-    print ""
-    print_map(contents)
+  lines = sys.stdin.readlines()
+  for i,line in enumerate(lines):
+    if line.startswith("Answer:"):
+      print_map(lines[i+1])
+      print ""
