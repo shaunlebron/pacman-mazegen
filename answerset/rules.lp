@@ -33,6 +33,12 @@ path(homeleft-1..homeright+1,homebottom+1).
 % define pacman start
 path(pacx1..pacx2,pacy).
 
+% ensure all paths are reachable
+step(1,0;;0,1;;-1,0;;0,-1).
+reachable(pacx1,pacy).
+reachable(X,Y) :- path(X,Y), reachable(X+DX,Y+DY), step(DX,DY).
+:- path(X,Y), not reachable(X,Y).
+
 % prevent fat paths:
 :- path(X,Y), path(X,Y+1), path(X+1,Y), path(X+1,Y+1).
 
