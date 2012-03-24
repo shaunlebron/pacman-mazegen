@@ -2,10 +2,13 @@ import sys,re
 
 def print_map(line):
   walls = {}
+  home = {}
   xdim = {}
   ydim = {}
   for m in re.finditer('wall\((\d+),(\d+)\)', line):
     walls[(int(m.group(1)),int(m.group(2)))] = True
+  for m in re.finditer('home\((\d+),(\d+)\)', line):
+    home[(int(m.group(1)),int(m.group(2)))] = True
   for m in re.finditer('xdim\((\d+)\)', line):
     xdim[int(m.group(1))] = True
   for m in re.finditer('ydim\((\d+)\)', line):
@@ -14,6 +17,8 @@ def print_map(line):
     for x in range(max(xdim.keys())):
       if (x+1,y+1) in walls:
         sys.stdout.write('|')
+      elif (x+1,y+1) in home:
+        sys.stdout.write('_')
       else:
         sys.stdout.write('.')
     print ''
