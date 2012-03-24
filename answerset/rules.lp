@@ -11,22 +11,62 @@
 xdim(1..width).
 ydim(1..height).
 
+step(1,0;;0,1;;-1,0;;0,-1).
+diag(-1,-1;;1,1;;1,-1;;-1,1).
+surround(DX,DY) :- step(DX,DY).
+surround(DX,DY) :- diag(DX,DY).
+
 % choose arbitrary walls
-{ wall(X,Y) :xdim(X) :ydim(Y) }.
+% make sure there are less than 520 wall tiles
+% (maps should have around 310 walkable tiles)
+{ wall(X,Y) :xdim(X) :ydim(Y) } 520.
 
-% define paths as tiles that are not walls
-path(X,Y) :- not wall(X,Y), not home(X,Y), xdim(X), ydim(Y).
+% choose no more than 40 blanks
+{ blank(X,Y) :xdim(X) :ydim(Y) } 40.
 
-% put walls around the map
-wall(1,Y;;width,Y) :- ydim(Y).
-wall(X,1;;X,height) :- xdim(X).
+% prevent blanks from touching paths
+:- blank(X,Y), path(X+DX,Y+DY), surround(DX,DY).
+
+% prevent non-rectangular blanks
+:- blank(X,Y), wall(X,Y+1), blank(X+1,Y), blank(X+1,Y+1).
+:- blank(X,Y), blank(X,Y+1), blank(X+1,Y), wall(X+1,Y+1).
+:- wall(X,Y), blank(X,Y+1), blank(X+1,Y), blank(X+1,Y+1).
+:- blank(X,Y), wall(X,Y+1), wall(X+1,Y), blank(X+1,Y+1).
+
+% prevent padding blanks with more than one wall
+:- blank(X,Y), wall(X+1,Y), wall(X+2,Y).
+:- wall(X,Y), wall(X+1,Y), blank(X+2,Y).
+:- blank(X,Y), wall(X,Y+1), wall(X,Y+2).
+:- wall(X,Y), wall(X,Y+1), blank(X,Y+2).
+
+% prevent separating blanks with a wall
+:- blank(X,Y), wall(X,Y+1), blank(X,Y+2).
+:- blank(X,Y), wall(X+1,Y), blank(X+2,Y).
+
+% prevent a blank block from being adjacent to the edge of the map
+:- blank(X,Y), wall(X+1,Y), not xdim(X+2).
+:- blank(X,Y), wall(X-1,Y), not xdim(X-2).
+:- blank(X,Y), wall(X,Y+1), not ydim(Y+2).
+:- blank(X,Y), wall(X,Y-1), not ydim(Y-2).
+
+% define paths as tiles that are not walls or blanks
+path(X,Y) :- not wall(X,Y), not blank(X,Y), xdim(X), ydim(Y).
+
+% prevent paths on top and bottom
+:- path(X,1), xdim(X).
+:- path(X,height), xdim(X).
+
+% create 0 to 2 tunnels
+{ path(1,Y) :ydim(Y) } 2.
+:- path(1,Y), path(1,Y-1).
+:- path(1,Y), path(1,Y+1).
 
 % define ghost home
 wall(homeleft..homeright,hometop).
 wall(homeleft..homeright,homebottom).
 wall(homeleft,hometop..homebottom).
 wall(homeright,hometop..homebottom).
-home(homeleft+1..homeright-1,hometop+1..homebottom-1).
+blank(homeleft+1..homeright-1,hometop+1..homebottom-1).
 path(homeleft-1,hometop-1..homebottom+1).
 path(homeright+1,hometop-1..homebottom+1).
 path(homeleft-1..homeright+1,hometop-1).
@@ -36,7 +76,6 @@ path(homeleft-1..homeright+1,homebottom+1).
 path(pacx1..pacx2,pacy).
 
 % ensure all paths are reachable
-step(1,0;;0,1;;-1,0;;0,-1).
 reachable(pacx1,pacy).
 reachable(X,Y) :- path(X,Y), reachable(X+DX,Y+DY), step(DX,DY).
 :- path(X,Y), not reachable(X,Y).
@@ -78,19 +117,18 @@ reachable(X,Y) :- path(X,Y), reachable(X+DX,Y+DY), step(DX,DY).
 % TODO: limit size of a contiguous piece
 
 % prevent 3x3 wall
-% TODO: prevent 3x3 walls unless they are in a rectangle block
-%:- wall(X,Y), wall(X+1,Y), wall(X+2,Y), 
-%   wall(X,Y+1), wall(X+1,Y+1), wall(X+2,Y+1),
-%   wall(X,Y+2), wall(X+1,Y+2), wall(X+2,Y+2).
+:- wall(X,Y), wall(X+1,Y), wall(X+2,Y), 
+   wall(X,Y+1), wall(X+1,Y+1), wall(X+2,Y+1),
+   wall(X,Y+2), wall(X+1,Y+2), wall(X+2,Y+2).
 
 % prevent this:
-% .|| ||.
+% .|   |.
 % ||| |||
-% ||. .||
-:- path(X,Y), wall(X+1,Y), wall(X+2,Y), wall(X,Y+1), wall(X+1,Y+1), wall(X+2,Y+1), wall(X,Y+2), wall(X+1,Y+2), path(X+2,Y+2).
-:- wall(X,Y), wall(X+1,Y), path(X+2,Y), wall(X,Y+1), wall(X+1,Y+1), wall(X+2,Y+1), path(X,Y+2), wall(X+1,Y+2), wall(X+2,Y+2).
+%  |. .| 
+:- path(X,Y), wall(X+1,Y), wall(X,Y+1), wall(X+1,Y+1), wall(X+2,Y+1), wall(X+1,Y+2), path(X+2,Y+2).
+:- wall(X+1,Y), path(X+2,Y), wall(X,Y+1), wall(X+1,Y+1), wall(X+2,Y+1), path(X,Y+2), wall(X+1,Y+2).
 
-% prevent dead ends
+% prevent dead end paths
 :- path(X,Y), path(X,Y+1), wall(X-1,Y), wall(X+1,Y), wall(X,Y-1).
 :- path(X,Y), path(X,Y-1), wall(X-1,Y), wall(X+1,Y), wall(X,Y+1).
 :- path(X,Y), path(X-1,Y), wall(X,Y+1), wall(X,Y-1), wall(X+1,Y).
@@ -104,7 +142,8 @@ reachable(X,Y) :- path(X,Y), reachable(X+DX,Y+DY), step(DX,DY).
 :- path(X,Y), path(X,Y+1), path(X-1,Y+1), path(X-1,Y+2).
 
 % prevent horizontal asymmetry
-:- wall(X,Y), path(width-X+1,Y).
+:- wall(X,Y), not wall(width-X+1,Y).
+:- blank(X,Y), not blank(width-X+1,Y).
 
 % prevent thick outer wall
 :- wall(2,Y), path(3,Y), ydim(Y).
@@ -112,6 +151,3 @@ reachable(X,Y) :- path(X,Y), reachable(X+DX,Y+DY), step(DX,DY).
 :- wall(X,2), path(X,3), xdim(X).
 :- wall(X,height-1), path(X,height-2), xdim(X).
 
-% make sure there are less than 520 wall tiles
-% (maps should have around 310 walkable tiles)
-:- 520 { wall(X,Y) }.
