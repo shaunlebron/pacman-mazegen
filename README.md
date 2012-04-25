@@ -18,7 +18,7 @@ Original Maps
 
 The following shows the structure of each of the six original maps.
 
-<a href="https://github.com/shaunew/Pac-Man/raw/gh-pages/mapgen/origmaps_2x.png"><img src="https://github.com/shaunew/Pac-Man/raw/gh-pages/mapgen/origmaps_1x.png"/></a>
+<img src="https://github.com/shaunew/Pac-Man/raw/gh-pages/mapgen/origmaps_2x.png" width="100%"/>
 
 
 Map Representation
@@ -30,6 +30,7 @@ We represent the maps using ASCII characters representing three possible tiles: 
 - A *void* (_) tile is the interior or exterior of a wall.
 - A *path* (.) tile is a walkable area.
 
+<!-- inserting this comment to end the list so the following code block will render correctly -->
 
     ORIGINAL PROTOTYPE             PAC-MAN                        MS. PAC-MAN (1)
     ____________________________   ____________________________   ____________________________
@@ -107,6 +108,7 @@ We represent the maps using ASCII characters representing three possible tiles: 
     ||||||||||||||||||||||||||||   ||||||||||||||||||||||||||||   ||||||||||||||||||||||||||||
     ____________________________   ____________________________   ____________________________
     ____________________________   ____________________________   ____________________________
+
 
 Structural Observations
 -----------------------
