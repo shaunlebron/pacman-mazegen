@@ -26,9 +26,9 @@ Map Representation
 
 We represent the maps using ASCII characters representing three possible tiles: wall(|), path(.), and blank(_).
 
-- A *wall* (|) tile is the boundary of a wall.
-- A *void* (_) tile is the interior or exterior of a wall.
-- A *path* (.) tile is a walkable area.
+- A **wall** (|) tile is the boundary of a wall.
+- A **void** (_) tile is the interior or exterior of a wall.
+- A **path** (.) tile is a walkable area.
 
 <!-- inserting this comment to end the list so the following code block will render correctly -->
 
