@@ -1,0 +1,103 @@
+
+<!--
+This was an attempt to illustrate why conventional maze generation routines
+couldn't be used to generate Pac-Man maps, but in the process I've actually
+found a lead that may suggest otherwise.
+-->
+
+<script src="Map.js"></script>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+window.onload = function() {
+
+    var x,y;
+    var cols=4,rows=4;
+    var size = 10; // size of a tile in this spanning tree example
+    var scale = 4;
+
+    var canvas = document.getElementById('canvas');
+    canvas.width = (cols*4*size+3*size+size)*scale;
+    canvas.height = (rows*size+size)*scale;
+
+    var ctx = canvas.getContext('2d');
+    ctx.scale(scale,scale);
+    ctx.translate(0.5,0.5);
+
+    var drawGrid = function() {
+        ctx.beginPath();
+        for (y=0; y<=rows; y++) {
+            ctx.moveTo(0,y*size);
+            ctx.lineTo(cols*size,y*size);
+        }
+        for (x=0; x<=cols; x++) {
+            ctx.moveTo(x*size,0);
+            ctx.lineTo(x*size,rows*size);
+        }
+        ctx.stroke();
+    };
+
+    var drawMaze = function() {
+        ctx.beginPath();
+        ctx.moveTo(0,0);
+        ctx.lineTo(0,size);
+        ctx.moveTo(0,2*size);
+        ctx.lineTo(0,4*size);
+        ctx.lineTo(4*size,4*size);
+        ctx.lineTo(4*size,3*size);
+        ctx.moveTo(4*size,2*size);
+        ctx.lineTo(4*size,0);
+        ctx.lineTo(0,0);
+        ctx.moveTo(0,2*size);
+        ctx.lineTo(size,2*size);
+        ctx.lineTo(size,size);
+        ctx.lineTo(size,3*size);
+        ctx.lineTo(size*2,3*size);
+        ctx.moveTo(size*2,2*size);
+        ctx.lineTo(size*2,size);
+        ctx.lineTo(size*3,size);
+        ctx.lineTo(size*3,0);
+        ctx.moveTo(size*4,size*2);
+        ctx.lineTo(size*3,size*2);
+        ctx.lineTo(size*3,size*3);
+        ctx.stroke();
+    };
+
+
+    ctx.strokeStyle="rgba(0,0,0,0.2)";
+    drawGrid();
+
+    ctx.translate((cols+1)*size,0);
+    drawGrid();
+
+    ctx.strokeStyle="#000";
+    drawMaze();
+
+    ctx.translate((cols+1)*size,0);
+    drawMaze();
+
+    ctx.translate((cols+1)*size,0);
+
+    var map = new Map(12,12,
+        "||||||||||||" +
+        "|.......||.|" +
+        "|.||.|||||.|" +
+        "|.||.|||||.|" +
+        "..||.||....|" +
+        "||||.||.||||" +
+        "||||.||.||||" +
+        "|.||....||.." +
+        "|.|||||.||.|" +
+        "|.|||||.||.|" +
+        "|..........|" +
+        "||||||||||||");
+
+    var s = 1/(map.numRows*tileSize/(size*rows));
+    ctx.scale(s,s);
+
+
+    map.draw(ctx,0,0,print=true);
+};
+</script>
