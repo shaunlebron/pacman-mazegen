@@ -37,7 +37,6 @@ var Map = function(numCols, numRows, tiles) {
     this.tiles = tiles;
 
     this.resetCurrent();
-    this.parseTunnels();
     this.parseWalls();
 };
 
@@ -218,57 +217,22 @@ Map.prototype.parseWalls = function() {
             }
 };
 
-// create a record of tunnel locations
-Map.prototype.parseTunnels = (function(){
-    
-    // starting from x,y and increment x by dx...
-    // determine where the tunnel entrance begins
-    var getTunnelEntrance = function(x,y,dx) {
-        while (!this.isFloorTile(x,y-1) && !this.isFloorTile(x,y+1) && this.isFloorTile(x,y))
-            x += dx;
-        return x;
-    };
-
-    // the number of margin tiles outside of the map on one side of a tunnel
-    // There are (2*marginTiles) tiles outside of the map per tunnel.
-    var marginTiles = 2;
-
-    return function() {
-        this.tunnelRows = {};
-        var y;
-        var i;
-        var left,right;
-        for (y=0;y<this.numRows;y++)
-            // a map row is a tunnel if opposite ends are both walkable tiles
-            if (this.isFloorTile(0,y) && this.isFloorTile(this.numCols-1,y))
-                this.tunnelRows[y] = {
-                    'leftEntrance': getTunnelEntrance.call(this,0,y,1),
-                    'rightEntrance':getTunnelEntrance.call(this,this.numCols-1,y,-1),
-                    'leftExit': -marginTiles*tileSize,
-                    'rightExit': (this.numCols+marginTiles)*tileSize-1,
-                };
-    };
-})();
-
 Map.prototype.posToIndex = function(x,y) {
     if (x>=0 && x<this.numCols && y>=0 && y<this.numRows) 
         return x+y*this.numCols;
 };
-
-// define which tiles are inside the tunnel
-Map.prototype.isTunnelTile = function(x,y) {
-    var tunnel = this.tunnelRows[y];
-    return tunnel && (x < tunnel.leftEntrance || x > tunnel.rightEntrance);
-};
-
 // retrieves tile character at given coordinate
 // extended to include offscreen tunnel space
 Map.prototype.getTile = function(x,y) {
     if (x>=0 && x<this.numCols && y>=0 && y<this.numRows) 
         return this.currentTiles[this.posToIndex(x,y)];
-    if ((x<0 || x>=this.numCols) && (this.isTunnelTile(x,y-1) || this.isTunnelTile(x,y+1)))
+
+    // extend walls and paths outward for entrances and exits
+    if ((x==-1           && this.getTile(x+1,y)=='|' && (this.isFloorTile(x+1,y+1)||this.isFloorTile(x+1,y-1))) ||
+        (x==this.numCols && this.getTile(x-1,y)=='|' && (this.isFloorTile(x-1,y+1)||this.isFloorTile(x-1,y-1))))
         return '|';
-    if (this.isTunnelTile(x,y))
+    if ((x==-1           && this.isFloorTile(x+1,y)) ||
+        (x==this.numCols && this.isFloorTile(x-1,y)))
         return ' ';
 };
 
