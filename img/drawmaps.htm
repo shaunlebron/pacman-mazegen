@@ -11,7 +11,7 @@
 <script>
 
 var update = function() {
-    draw(scale=2.0,print=document.getElementById('chkPrint').checked);
+    draw(scale=3.0,print=document.getElementById('chkPrint').checked);
 };
 
 window.onload = function() {
@@ -25,10 +25,8 @@ var draw = function(scale,print) {
     canvas.height=(36*tileSize*2+tileSize)*scale;
     ctx.scale(scale,scale);
 
-    if (!print) {
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0,0,canvas.width, canvas.height);
-    }
+    ctx.fillStyle = print?"#fff":"#000";
+    ctx.fillRect(0,0,canvas.width, canvas.height);
 
     ctx.font = "bold " + 2*tileSize + "px sans-serif";
     ctx.textBaseline = "top";
