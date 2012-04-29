@@ -246,7 +246,7 @@ Map.prototype.isFloorTile = function(x,y) {
     return this.isFloorTileChar(this.getTile(x,y));
 };
 
-// function to draw the map
+// function to draw the map as a tile map
 Map.prototype.draw = function(ctx,left,top,print) {
 
     // save state
@@ -308,6 +308,70 @@ Map.prototype.draw = function(ctx,left,top,print) {
     for (x=0; x<=this.numCols; x++) {
         ctx.moveTo(x*tileSize,0);
         ctx.lineTo(x*tileSize,this.heightPixels);
+    }
+    ctx.stroke();
+
+    // draw title
+    if (this.name) {
+        ctx.fillStyle = print?"#000":"#fff";
+        ctx.fillText(this.name, 0,tileSize/2);
+    }
+
+    ctx.restore();
+
+};
+
+// function to draw the map using simple representation of the paths as straight lines
+Map.prototype.drawPath = function(ctx,left,top) {
+    var print = true;
+
+    // save state
+    ctx.save();
+    ctx.translate(0.5,0.5); // pixel perfect lines?
+
+    // translate to the position of the map
+    ctx.translate(left,top);
+
+    // clip the drawing surface
+    ctx.beginPath();
+    ctx.rect(0,0,this.widthPixels, this.heightPixels);
+    ctx.clip();
+
+    var x,y;
+    var i,j;
+    var tile;
+
+    // draw pellets for each path tile
+    ctx.lineWidth = 2.0;
+    ctx.strokeStyle="rgba(0,0,0,0.8)";
+    ctx.beginPath();
+    for (y=0; y<this.numRows-1; y++) {
+        for (x=0; x<this.numCols-1; x++) {
+            if (this.isFloorTile(x,y)) {
+                if (this.isFloorTile(x+1,y)) {
+                    ctx.moveTo(x*tileSize,y*tileSize);
+                    ctx.lineTo((x+1)*tileSize,y*tileSize);
+                }
+                if (this.isFloorTile(x,y+1)) {
+                    ctx.moveTo(x*tileSize,y*tileSize);
+                    ctx.lineTo(x*tileSize,(y+1)*tileSize);
+                }
+            }
+        }
+    }
+    ctx.stroke();
+
+    // draw grid
+    ctx.lineWidth = 1.0;
+    ctx.strokeStyle=print?"rgba(0,0,0,0.3)":"rgba(255,255,255,0.3)";
+    ctx.beginPath();
+    for (y=0; y<this.numRows; y++) {
+        ctx.moveTo(0,y*tileSize);
+        ctx.lineTo(this.widthPixels-tileSize,y*tileSize);
+    }
+    for (x=0; x<this.numCols; x++) {
+        ctx.moveTo(x*tileSize,0);
+        ctx.lineTo(x*tileSize,this.heightPixels-tileSize);
     }
     ctx.stroke();
 

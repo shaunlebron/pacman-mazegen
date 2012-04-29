@@ -303,12 +303,14 @@ var draw = function(scale,print) {
     var w = mapPacman.widthPixels+tileSize;
     var h = mapPacman.heightPixels+tileSize;
 
-    mapSketch.draw(ctx,0,0,print);
-    mapPacman.draw(ctx,w,0,print);
-    mapMsPacman1.draw(ctx,2*w,0,print);
-    mapMsPacman2.draw(ctx,0,h,print);
-    mapMsPacman3.draw(ctx,w,h,print);
-    mapMsPacman4.draw(ctx,2*w,h,print);
+    // change these functions to 'draw' or 'drawPath' to change map representations
+    // when using 'drawPath', the 'print' checkbox must be selected for now to prevent blackout.
+    mapSketch.drawPath(ctx,0,0,print);
+    mapPacman.drawPath(ctx,w,0,print);
+    mapMsPacman1.drawPath(ctx,2*w,0,print);
+    mapMsPacman2.drawPath(ctx,0,h,print);
+    mapMsPacman3.drawPath(ctx,w,h,print);
+    mapMsPacman4.drawPath(ctx,2*w,h,print);
 };
 
 </script>

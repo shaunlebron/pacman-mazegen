@@ -20,7 +20,8 @@ Works in Progress
   [Clingo](http://potassco.sourceforge.net/#clingo) solution that specifies
   declarative constraints.  This [blog post](http://eis-blog.ucsc.edu/2011/10/map-generation-speedrun/)
   is a good introduction to map generation using Clingo.
-- The 'spanningtree' folder contains a yet to be explored way to apply a modified version of conventional maze generation algorithms.
+- The 'spanningtree' folder is a lead to apply a modified version of conventional maze generation algorithms.
+- The 'tetris' folder contains a solution for stacking pieces in a tetris like manner.
 
 Original Maps
 -------------
@@ -35,6 +36,12 @@ The following shows the structure of each of the six original maps.
 
 <img src="https://github.com/shaunew/Pac-Man/raw/gh-pages/mapgen/img/origmaps_2x_print.png" width="100%"/>
 
-The original prototype shown above is a [photograph of Iwatani's sketchbook](http://www.control-online.nl/gamesindustrie/2010/06/22/iwatani-toont-gamesgeschiedenis-in-meest-pure-vorm/).
+**Paths Version**
+
+This is perhaps the simplest way to visualize the maps.
+
+<img src="https://github.com/shaunew/Pac-Man/raw/gh-pages/mapgen/img/origmaps_2x_print.png" width="100%"/>
+
+NOTE: The original prototype shown above is a [photograph of Iwatani's sketchbook](http://www.control-online.nl/gamesindustrie/2010/06/22/iwatani-toont-gamesgeschiedenis-in-meest-pure-vorm/).
 
 Check the 'img' subfolder for details on how the pictures above were generated.
