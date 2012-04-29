@@ -13,42 +13,52 @@ import sys
 # - bend
 # - cross
 
-cols = 28
-rows = 15
-heights = [-1]*cols
-tiles = ['_']*rows*cols
+class Map:
+    def __init__(self):
+        self.cols = 28
+        self.rows = 15
+        self.heights = [-1]*self.cols
+        self.tiles = ['_']*self.rows*self.cols
 
-def get_tile(x,y):
-    return tiles[x+y*cols]
+        # insert ghost house
+        self.insert_piece(10,0,6,6,'A')
 
-def set_tile(x,y,key):
-    tiles[x+y*cols] = key
+    def get_tile(self,x,y):
+        return self.tiles[x+y*self.cols]
 
-def insert_piece(x,y,w,h,key):
-    for y0 in xrange(y,y+h):
-        for x0 in xrange(x,x+w):
-            set_tile(x0,y0,key)
-            heights[x0] = max(heights[x0],y0)
+    def set_tile(self,x,y,key):
+        self.tiles[x+y*self.cols] = key
 
-def print_tiles():
-    for y in xrange(rows):
-        for x in xrange(cols):
-            sys.stdout.write(get_tile(x,y))
-        print ""
+    def insert_piece(self,x,y,w,h,key):
+        for y0 in xrange(y,y+h):
+            for x0 in xrange(x,x+w):
+                self.set_tile(x0,y0,key)
+                self.heights[x0] = max(self.heights[x0],y0)
 
-def get_next_positions():
-    bottom = min(heights)
-    pos_list = []
-    for x in xrange(cols-2):
-        if heights[x] == bottom and heights[x+1] == bottom and heights[x+2] == bottom:
-            if x == 0 or x == rows-3 or heights[x+3] != bottom or heights[x-1] != bottom:
-                pos_list.append(x)
-    return pos_list
+    def print_tiles(self):
+        for y in xrange(self.rows):
+            for x in xrange(self.cols):
+                sys.stdout.write(self.get_tile(x,y))
+            print ""
+
+    def update_next_positions(self):
+        self.bottom = min(self.heights)
+        self.pos_list = []
+        for x in xrange(self.cols-2):
+            if self.heights[x] == self.bottom and self.heights[x+1] == self.bottom and self.heights[x+2] == self.bottom:
+                if x == 0 or self.heights[x-1] != self.bottom:
+                    self.pos_list.append(x)
+                    # TODO: mark direction right
+                elif x == self.cols-3 or self.heights[x+3] != self.bottom:
+                    self.pos_list.append(x)
+                    # TODO: mark direction left
 
 if __name__ == "__main__":
 
-    # insert ghost house
-    insert_piece(10,0,6,6,'A')
+    m = Map()
 
     # display map
-    print_tiles()
+    m.print_tiles()
+
+    m.update_next_positions()
+    print m.pos_list
