@@ -104,41 +104,68 @@ class Map:
                         key = newkey
                         nooks.append(x)
 
-            # get an initial set of possible widths
-            def getPossibleWidths():
-                widths = range(3,gaplen-2) + [gaplen]
-                return set([w for w in widths if w <= 12])
+            maxHeight = 12
+            maxWidth = 12
 
-            # final width filter to favor larger widths
-            def filterWidths(widths):
-                minWidth = 6
-                newWidths = [w for w in widths if w >= minWidth]
-                if len(newWidths) > 1:
-                    return newWidths
-                else:
-                    return [max(widths)]
+            # create possible heights
+            def getPossibleHeights():
+                heights = range(3, self.rows-top)
+                return set([h for h in heights if h <= maxHeight])
 
-            # create block that starts at a left edge
-            block = StartBlock(gap[0],top)
-            block.dx = 1
-            widths = getPossibleWidths()
-            for x in nooks:
-                # discard widths that come too close to the nooks
-                widths.discard(x-1-block.x)
-                widths.discard(x+1-block.x)
-            block.possibleWidths = filterWidths(list(widths))
-            blocks.append(block)
+            heights = getPossibleHeights()
+            if not heights:
+                continue
 
-            if gaplen >= 6:
+            leftHeights = set(heights)
+            if gap[0] > 0:
+                h0 = self.tops[gap[0]-1]-top
+                leftHeights.discard(h0-1)
+                leftHeights.discard(h0+1)
+            rightHeights = set(heights)
+            if gap[-1] < self.cols-1:
+                h0 = self.tops[gap[-1]+1]-top
+                rightHeights.discard(h0-1)
+                rightHeights.discard(h0+1)
+            fillHeights = leftHeights & rightHeights
+            if not fillHeights:
+                continue
+
+            nonFillWidths = set([w for w in range(3,gaplen-2) if w <= maxWidth])
+            if nonFillWidths:
+                # create block that starts at a left edge
+                if leftHeights:
+                    block = StartBlock(gap[0],top)
+                    block.dx = 1
+                    widths = set(nonFillWidths)
+                    for x in nooks:
+                        # discard widths that come too close to the nooks
+                        widths.discard(x-1-block.x)
+                        widths.discard(x+1-block.x)
+                    if widths:
+                        block.possibleWidths = list(widths)
+                        block.possibleHeights = list(leftHeights)
+                        blocks.append(block)
+
                 # create block that starts at a right edge
-                block = StartBlock(gap[-1]+1,top)
-                block.dx = -1
-                widths = getPossibleWidths()
-                for x in nooks:
-                    # discard widths that come too close to the nooks
-                    widths.discard(block.x-(x-1))
-                    widths.discard(block.x-(x+1))
-                block.possibleWidths = filterWidths(list(widths))
+                if rightHeights:
+                    block = StartBlock(gap[-1]+1,top)
+                    block.dx = -1
+                    widths = set(nonFillWidths)
+                    for x in nooks:
+                        # discard widths that come too close to the nooks
+                        widths.discard(block.x-(x-1))
+                        widths.discard(block.x-(x+1))
+                    if widths:
+                        block.possibleWidths = list(widths)
+                        block.possibleHeights = list(rightHeights)
+                        blocks.append(block)
+
+            if gaplen <= maxWidth:
+                # create block that fills entire gap
+                block = StartBlock(gap[0],top)
+                block.dx = 1
+                block.possibleWidths = [gaplen]
+                block.possibleHeights = list(fillHeights)
                 blocks.append(block)
 
         self.start_blocks = blocks
@@ -155,14 +182,27 @@ if __name__ == "__main__":
             if not m.start_blocks:
                 break
             block = random.choice(m.start_blocks)
-            w = random.choice(block.possibleWidths)
+            w = min(block.possibleWidths)
+            h = min(block.possibleHeights)
+            if w > 3 and h > 3: # fat block
+                w = random.choice(block.possibleWidths)
+                h = random.choice(block.possibleHeights)
+            elif w > 3: # horizontal piece
+                w = random.choice(block.possibleWidths)
+            elif h > 3: # vertical piece
+                h = random.choice(block.possibleHeights)
+            else:
+                if random.choice(('v','h')) == 'v':
+                    h = random.choice(block.possibleHeights)
+                else:
+                    w = random.choice(block.possibleWidths)
             key = string.uppercase[i]
             i += 1
             if block.dx == 1:
                 x = block.x
             else:
                 x = block.x-w
-            m.insert_piece(x,block.y,w,3,key)
+            m.insert_piece(x,block.y,w,h,key)
             m.print_tiles()
             print ""
     finally:
