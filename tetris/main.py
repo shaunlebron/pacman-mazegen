@@ -17,6 +17,11 @@ class StartBlock:
     def __init__(self,x,y):
         self.x = x
         self.y = y
+        self.dx = 1
+        self.isCross = False
+
+    def commit(self):
+        pass
 
 class Map:
     def __init__(self):
@@ -166,15 +171,17 @@ class Map:
                 block.dx = 1
                 block.possibleWidths = [gaplen]
                 block.possibleHeights = list(fillHeights)
+                block.possibleLeftHeights = list(leftHeights)
+                block.possibleRightHeights = list(rightHeights)
                 blocks.append(block)
 
         self.start_blocks = blocks
 
+mymap = Map()
+
 if __name__ == "__main__":
 
-    m = Map()
-    m.print_tiles()
-
+    m = mymap
     i = 1
     try:
         while True:
@@ -203,7 +210,7 @@ if __name__ == "__main__":
             else:
                 x = block.x-w
             m.insert_piece(x,block.y,w,h,key)
-            m.print_tiles()
-            print ""
+            #m.print_tiles()
+            #print ""
     finally:
         m.print_render()

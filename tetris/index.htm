@@ -1,0 +1,47 @@
+
+<script src="phase1.js"></script>
+
+<canvas id='canvas'></canvas>
+
+<script>
+
+window.onload = function() {
+    var size = 50;
+
+    var canvas = document.getElementById('canvas');
+    canvas.width = cols*size;
+    canvas.height = rows*size;
+
+    var ctx = canvas.getContext('2d');
+
+    genCells();
+
+    ctx.beginPath();
+    var i;
+    for (i=0; i<cols*rows; i++) {
+        var c = cells[i];
+        var x = i % cols;
+        var y = Math.floor(i / cols);
+
+        if (!c.connect[UP]) {
+            ctx.moveTo(x*size, y*size);
+            ctx.lineTo(x*size+size, y*size);
+        }
+        if (!c.connect[DOWN]) {
+            ctx.moveTo(x*size, y*size+size);
+            ctx.lineTo(x*size+size, y*size+size);
+        }
+        if (!c.connect[LEFT]) {
+            ctx.moveTo(x*size, y*size);
+            ctx.lineTo(x*size, y*size+size);
+        }
+        if (!c.connect[RIGHT]) {
+            ctx.moveTo(x*size+size, y*size);
+            ctx.lineTo(x*size+size, y*size+size);
+        }
+    }
+    ctx.stroke();
+
+};
+
+</script>
