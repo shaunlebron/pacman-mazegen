@@ -66,53 +66,53 @@ var reset = function() {
 var presets = {
     'pacman':
         '^><><' +
-        'r<v><' +
+        'm<v><' +
         '^>3rm' +
-        'r7^Lw' +
-        'LJvrm' +
-        'r<^Lw' +
+        'm7^Lw' +
+        'wJvrm' +
+        'm<^Lw' +
         '^><r<' +
-        'r<v^>' +
+        'm<v^>' +
         '^>w-<',
     'mspacman1': 
-        '><^><' +
+        '-<^><' +
         'v><v>' +
-        'L<>Jr' +
-        'r7>7E' +
-        'LJv^L' +
+        'w<>Jr' +
+        'm7>7E' +
+        'wJv^L' +
         'v>w<r' +
-        'L<><L' +
+        'w<><L' +
         'v>7r7' +
-        'L<^LJ',
+        'w<^LJ',
     'mspacman2':
-        'r<^>-' +
+        'm<^>-' +
         '^v>-7' +
-        '>Jr<^' +
-        'r7^>-' +
-        'LJvr<' +
+        '-Jr<^' +
+        'm7^>-' +
+        'wJvr<' +
         'v>J^r' +
         '^>m<L' +
-        'r<^v>' +
+        'w<^v>' +
         '^><L<',
     'mspacman3':
-        'r^>-7' +
+        'v^>-7' +
         '^><v^' +
-        '><>Jv' +
-        'r7v>J' +
-        'LJL<v' +
+        '-<>Jv' +
+        'm7v>J' +
+        'wJL<v' +
         'v>7>J' +
-        'L<^v>' +
+        'w<^v>' +
         'v>7L<' +
-        'L<|><',
+        'w<|><',
     'mspacman4':
-        '>7><v' +
+        '-7><v' +
         'v^v>J' +
         '^>+<r' +
-        'r7^vL' +
-        'LJvE<' +
+        'm7^vL' +
+        'wJvE<' +
         'v>J^r' +
         '^v><L' +
-        '>Jv>7' +
+        '-Jv>7' +
         'v>w<^',
 };
 
