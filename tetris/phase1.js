@@ -92,7 +92,7 @@ var presets = {
         'wJvr<' +
         'v>J^r' +
         '^>m<L' +
-        'w<^v>' +
+        'm<^v>' +
         '^><L<',
     'mspacman3':
         'v^>-7' +
