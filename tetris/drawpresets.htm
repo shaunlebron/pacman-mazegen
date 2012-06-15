@@ -1,0 +1,25 @@
+
+<script src="phase1.js"></script>
+
+<canvas id='canvas'></canvas>
+
+<script>
+
+window.onload = function() {
+    var size = 30;
+
+    var canvas = document.getElementById('canvas');
+    canvas.width = (cols+2)*size * 5;
+    canvas.height = (rows+2)*size * 1;
+
+    var ctx = canvas.getContext('2d');
+
+    var i;
+    var names = ['pacman','mspacman1','mspacman2','mspacman3','mspacman4'];
+    for (i=0; i<5; i++) {
+        genPreset(names[i]);
+        drawCells(ctx,i*(cols+1)*size+size,size,size,names[i]);
+    }
+};
+
+</script>

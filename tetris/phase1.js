@@ -12,56 +12,137 @@ var cells = [];
 var rows = 9;
 var cols = 5;
 
-var genCells = function() {
-    var reset = function() {
-        var i;
-        var c;
+var reset = function() {
+    var i;
+    var c;
 
-        // initialize cells
-        for (i=0; i<rows*cols; i++) {
-            cells[i] = {
-                x: i%cols,
-                y: Math.floor(i/cols),
-                filled: false,
-                connect: [false, false, false, false],
-                next: [],
-            };
+    // initialize cells
+    for (i=0; i<rows*cols; i++) {
+        cells[i] = {
+            x: i%cols,
+            y: Math.floor(i/cols),
+            filled: false,
+            connect: [false, false, false, false],
+            next: [],
+        };
+    }
+
+    // allow each cell to refer to surround cells by direction
+    for (i=0; i<rows*cols; i++) {
+        var c = cells[i];
+        if (c.x > 0)
+            c.next[LEFT] = cells[i-1];
+        if (c.x < cols - 1)
+            c.next[RIGHT] = cells[i+1];
+        if (c.y > 0)
+            c.next[UP] = cells[i-cols];
+        if (c.y < rows - 1)
+            c.next[DOWN] = cells[i+cols];
+    }
+
+    // define the ghost home square
+
+    i = 3*cols;
+    c = cells[i];
+    c.filled=true;
+    c.connect[RIGHT] = c.connect[DOWN] = true;
+
+    i++;
+    c = cells[i];
+    c.filled=true;
+    c.connect[LEFT] = c.connect[DOWN] = true;
+
+    i+=cols-1;
+    c = cells[i];
+    c.filled=true;
+    c.connect[UP] = c.connect[RIGHT] = true;
+
+    i++;
+    c = cells[i];
+    c.filled=true;
+    c.connect[UP] = c.connect[LEFT] = true;
+};
+
+var presets = {
+    'pacman':
+        '^><><' +
+        'r<v><' +
+        '^>3rm' +
+        'r7^Lw' +
+        'LJvrm' +
+        'r<^Lw' +
+        '^><r<' +
+        'r<v^>' +
+        '^>w-<',
+    'mspacman1': 
+        '><^><' +
+        'v><v>' +
+        'L<>Jr' +
+        'r7>7E' +
+        'LJv^L' +
+        'v>w<r' +
+        'L<><L' +
+        'v>7r7' +
+        'L<^LJ',
+    'mspacman2':
+        'r<^>-' +
+        '^v>-7' +
+        '>Jr<^' +
+        'r7^>-' +
+        'LJvr<' +
+        'v>J^r' +
+        '^>m<L' +
+        'r<^v>' +
+        '^><L<',
+    'mspacman3':
+        'r^>-7' +
+        '^><v^' +
+        '><>Jv' +
+        'r7v>J' +
+        'LJL<v' +
+        'v>7>J' +
+        'L<^v>' +
+        'v>7L<' +
+        'L<|><',
+    'mspacman4':
+        '>7><v' +
+        'v^v>J' +
+        '^>+<r' +
+        'r7^vL' +
+        'LJvE<' +
+        'v>J^r' +
+        '^v><L' +
+        '>Jv>7' +
+        'v>w<^',
+};
+
+var genPreset = function(name) {
+    reset();
+    var p = presets[name];
+    var i,c;
+    for (i=0; i<rows*cols; i++) {
+        c = cells[i].connect;
+        switch (p[i]) {
+            case '>': c[RIGHT] = true; break;
+            case '<': c[LEFT] = true; break;
+            case '^': c[UP] = true; break;
+            case 'v': c[DOWN] = true; break;
+            case 'L': c[UP] = c[RIGHT] = true; break;
+            case 'r': c[DOWN] = c[RIGHT] = true; break;
+            case '7': c[DOWN] = c[LEFT] = true; break;
+            case 'J': c[LEFT] = c[UP] = true; break;
+            case '-': c[LEFT] = c[RIGHT] = true; break;
+            case '|': c[UP] = c[DOWN] = true; break;
+            case 'w': c[UP] = c[LEFT] = c[RIGHT] = true; break;
+            case '3': c[UP] = c[LEFT] = c[DOWN] = true; break;
+            case 'm': c[LEFT] = c[DOWN] = c[RIGHT] = true; break;
+            case 'E': c[DOWN] = c[RIGHT] = c[UP] = true; break;
+            case '+': c[DOWN] = c[RIGHT] = c[UP] = c[LEFT] = true; break;
         }
+    }
+};
 
-        // allow each cell to refer to surround cells by direction
-        for (i=0; i<rows*cols; i++) {
-            var c = cells[i];
-            if (c.x > 0)
-                c.next[LEFT] = cells[i-1];
-            if (c.x < cols - 1)
-                c.next[RIGHT] = cells[i+1];
-            if (c.y > 0)
-                c.next[UP] = cells[i-cols];
-            if (c.y < rows - 1)
-                c.next[DOWN] = cells[i+cols];
-        }
-
-        // define the ghost home square
-        i = 3*cols;
-        c = cells[i];
-        c.filled=true;
-        c.connect[RIGHT] = c.connect[DOWN] = true;
-
-        i++;
-        c = cells[i];
-        c.filled=true;
-        c.connect[LEFT] = c.connect[DOWN] = true;
-
-        i+=cols-1;
-        c = cells[i];
-        c.filled=true;
-        c.connect[UP] = c.connect[RIGHT] = true;
-
-        i++;
-        c = cells[i];
-        c.filled=true;
-        c.connect[UP] = c.connect[LEFT] = true;
-    };
+var genRandom = function() {
 
     var getLeftMostEmptyCells = function() {
         var x;
@@ -184,3 +265,56 @@ var genCells = function() {
     gen();
     // TODO: perhaps generate new map if a rare nonaesthetic feature is found and if no easy preventive heuristic can be found.
 };
+
+var drawCells = function(ctx,left,top,size,title) {
+    ctx.save();
+    ctx.translate(left,top);
+    ctx.font = "bold " + size/3*2 + "px sans-serif";
+    ctx.textBaseline = "bottom";
+    ctx.textAlign = "left";
+
+    ctx.fillText(title, 0, -5);
+
+    ctx.beginPath();
+    for (y=0; y<=rows; y++) {
+        ctx.moveTo(0,y*size);
+        ctx.lineTo(cols*size,y*size);
+    }
+    for (x=0; x<=cols; x++) {
+        ctx.moveTo(x*size,0);
+        ctx.lineTo(x*size,rows*size);
+    }
+    ctx.lineWidth = "1";
+    ctx.strokeStyle = "rgba(0,0,0,0.2)";
+    ctx.stroke();
+
+    ctx.beginPath();
+    var i;
+    for (i=0; i<cols*rows; i++) {
+        var c = cells[i];
+        var x = i % cols;
+        var y = Math.floor(i / cols);
+
+        if (!c.connect[UP]) {
+            ctx.moveTo(x*size, y*size);
+            ctx.lineTo(x*size+size, y*size);
+        }
+        if (!c.connect[DOWN]) {
+            ctx.moveTo(x*size, y*size+size);
+            ctx.lineTo(x*size+size, y*size+size);
+        }
+        if (!c.connect[LEFT]) {
+            ctx.moveTo(x*size, y*size);
+            ctx.lineTo(x*size, y*size+size);
+        }
+        if (!c.connect[RIGHT]) {
+            ctx.moveTo(x*size+size, y*size);
+            ctx.lineTo(x*size+size, y*size+size);
+        }
+    }
+    ctx.lineWidth = "3";
+    ctx.strokeStyle = "#000";
+    ctx.stroke();
+    ctx.restore();
+};
+
