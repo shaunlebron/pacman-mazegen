@@ -399,7 +399,8 @@ var drawCells = function(ctx,left,top,size,title) {
 
     // set cell number font
     ctx.font = size/2 + "px sans-serif";
-    ctx.textBaseline = "top";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
 
     ctx.beginPath();
     for (y=0; y<=rows; y++) {
@@ -422,7 +423,7 @@ var drawCells = function(ctx,left,top,size,title) {
         var y = Math.floor(i / cols);
 
         if (c.no != undefined) {
-            ctx.fillText(c.no, x*size+3, y*size+3);
+            ctx.fillText(c.no, x*size+size/2, y*size+size/2);
         }
 
         if (!c.connect[UP]) {
