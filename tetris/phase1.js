@@ -24,6 +24,7 @@ var reset = function() {
             filled: false,
             connect: [false, false, false, false],
             next: [],
+            no: undefined,
         };
     }
 
@@ -45,7 +46,7 @@ var reset = function() {
     i = 3*cols;
     c = cells[i];
     c.filled=true;
-    c.connect[RIGHT] = c.connect[DOWN] = true;
+    c.connect[LEFT] = c.connect[RIGHT] = c.connect[DOWN] = true;
 
     i++;
     c = cells[i];
@@ -55,7 +56,7 @@ var reset = function() {
     i+=cols-1;
     c = cells[i];
     c.filled=true;
-    c.connect[UP] = c.connect[RIGHT] = true;
+    c.connect[LEFT] = c.connect[UP] = c.connect[RIGHT] = true;
 
     i++;
     c = cells[i];
@@ -142,6 +143,53 @@ var genPreset = function(name) {
     }
 };
 
+var isCellConnection = function(cell,key) {
+    var c = cell.connect;
+    switch (key) {
+        case '.': return !c[UP] && !c[DOWN] && !c[LEFT] && !c[RIGHT];
+        case '>': return !c[UP] && !c[DOWN] && !c[LEFT] &&  c[RIGHT];
+        case '<': return !c[UP] && !c[DOWN] &&  c[LEFT] && !c[RIGHT];
+        case '^': return  c[UP] && !c[DOWN] && !c[LEFT] && !c[RIGHT];
+        case 'v': return !c[UP] &&  c[DOWN] && !c[LEFT] && !c[RIGHT];
+        case 'L': return  c[UP] && !c[DOWN] && !c[LEFT] &&  c[RIGHT];
+        case 'r': return !c[UP] &&  c[DOWN] && !c[LEFT] &&  c[RIGHT];
+        case '7': return !c[UP] &&  c[DOWN] &&  c[LEFT] && !c[RIGHT];
+        case 'J': return  c[UP] && !c[DOWN] &&  c[LEFT] && !c[RIGHT];
+        case '-': return !c[UP] && !c[DOWN] &&  c[LEFT] &&  c[RIGHT];
+        case '|': return  c[UP] &&  c[DOWN] && !c[LEFT] && !c[RIGHT];
+        case 'w': return  c[UP] && !c[DOWN] &&  c[LEFT] &&  c[RIGHT];
+        case '3': return  c[UP] &&  c[DOWN] &&  c[LEFT] && !c[RIGHT];
+        case 'm': return !c[UP] &&  c[DOWN] &&  c[LEFT] &&  c[RIGHT];
+        case 'E': return  c[UP] &&  c[DOWN] && !c[LEFT] &&  c[RIGHT];
+        case '+': return  c[UP] &&  c[DOWN] &&  c[LEFT] &&  c[RIGHT];
+    }
+    return false;
+};
+
+var getCellConnectionKey = function(cell) {
+    var c = cell.connect;
+    var u = c[UP];
+    var d = c[DOWN];
+    var l = c[LEFT];
+    var r = c[RIGHT];
+    if ( !u && !d && !l && !r) return '.';
+    if ( !u && !d && !l &&  r) return '>';
+    if ( !u && !d &&  l && !r) return '<';
+    if (  u && !d && !l && !r) return '^';
+    if ( !u &&  d && !l && !r) return 'v';
+    if (  u && !d && !l &&  r) return 'L';
+    if ( !u &&  d && !l &&  r) return 'r';
+    if ( !u &&  d &&  l && !r) return '7';
+    if (  u && !d &&  l && !r) return 'J';
+    if ( !u && !d &&  l &&  r) return '-';
+    if (  u &&  d && !l && !r) return '|';
+    if (  u && !d &&  l &&  r) return 'w';
+    if (  u &&  d &&  l && !r) return '3';
+    if ( !u &&  d &&  l &&  r) return 'm';
+    if (  u &&  d && !l &&  r) return 'E';
+    if (  u &&  d &&  l &&  r) return '+';
+};
+
 var genRandom = function() {
 
     var getLeftMostEmptyCells = function() {
@@ -166,11 +214,15 @@ var genRandom = function() {
     
         var cell;
         var newCell;
+        var firstCell;
         var openCells;
         var numOpenCells;
         var dir;
         var size;
         var i,k;
+        var numFilled = 0;
+        var singleCount = {};
+        singleCount[0] = singleCount[rows-1] = 0;
 
         while (true) {
             // find all the leftmost empty cells
@@ -183,8 +235,18 @@ var genRandom = function() {
             }
 
             // choose the center cell to be a random open cell, and fill it.
-            cell = openCells[getRandomInt(0,numOpenCells-1)];
+            firstCell = cell = openCells[getRandomInt(0,numOpenCells-1)];
             cell.filled = true;
+            cell.no = numFilled++;
+
+            // randomly allow one single-cell piece on the top or bottom of the map.
+            if (cell.x < cols-1 && (cell.y in singleCount) && Math.random() <= 0.35) {
+                if (singleCount[cell.y] == 0) {
+                    cell.connect[cell.y == 0 ? UP : DOWN] = true;
+                    singleCount[cell.y]++;
+                    continue;
+                }
+            }
 
             // only allow the piece to grow to 5 cells at most.
             size = 1;
@@ -234,46 +296,110 @@ var genRandom = function() {
                     break;
                 }
 
+                var stop = false;
+
                 // no more adjacent cells, so stop growing this piece.
                 if (numOpenCells == 0) {
-                    break;
+                    stop = true;
+                }
+                else {
+                    // choose a random valid direction to grow.
+                    dir = openCells[getRandomInt(0,numOpenCells-1)];
+                    newCell = cell.next[dir];
+
+                    // connect the cell to the new cell.
+                    cell.connect[dir] = true;
+                    newCell.connect[(dir+2)%4] = true;
+                    if (cell.x == 0 && dir == RIGHT) {
+                        cell.connect[LEFT] = true;
+                    }
+
+                    // fill the cell
+                    newCell.filled = true;
+                    newCell.no = numFilled++;
+
+                    // increase the size count of this piece.
+                    size++;
+
+                    // don't let center pieces grow past 3 cells
+                    if (firstCell.x == 0 && size == 3) {
+                        stop = true;
+                    }
+
+                    // Use a probability to determine when to stop growing the piece.
+                    if (Math.random() <= [0.10, 0.5, 0.75, 0][size-2]) {
+                        stop = true;
+                    }
                 }
 
-                // choose a random valid direction to grow.
-                dir = openCells[getRandomInt(0,numOpenCells-1)];
-                newCell = cell.next[dir];
+                // Close the piece.
+                if (stop) {
 
-                // connect the cell to the new cell.
-                cell.connect[dir] = true;
-                newCell.connect[(dir+2)%4] = true;
+                    if (size == 1) {
+                        // This is provably a single cell piece on the right edge of the map.
+                        // It must be attached to the outer wall.
+                        cell.connect[RIGHT] = true;
+                    }
+                    else if (size == 2) {
 
-                // fill the cell
-                newCell.filled = true;
+                        // With a vertical 2-cell piece, attach to the right wall if adjacent.
+                        var c = firstCell;
+                        if (c.x == cols-1) {
+                            if (c.connect[UP]) {
+                                c.connect[RIGHT] = c.next[UP].connect[RIGHT] = true;
+                            }
+                            else {
+                                c.connect[RIGHT] = c.next[DOWN].connect[RIGHT] = true;
+                            }
+                        }
 
-                // increase the size count of this piece.
-                size++;
+                    }
 
-                // Use a probability to determine when to stop growing the piece.
-                if (Math.random() <= [0.10, 0.65, 0.75, 0][size-2]) {
                     break;
                 }
             }
         }
     };
 
-    reset();
-    gen();
-    // TODO: perhaps generate new map if a rare nonaesthetic feature is found and if no easy preventive heuristic can be found.
+    // This is a function to detect impurities in the map that have no heuristic implemented to avoid it yet in gen().
+    var isDesirable = function() {
+
+        var c = cells[4];
+        if (c.connect[UP] || c.connect[RIGHT]) {
+            return false;
+        }
+
+        c = cells[rows*cols-1];
+        if (c.connect[DOWN] || c.connect[RIGHT]) {
+            return false;
+        }
+        return true;
+    };
+
+    var genCount = 0;
+    do {
+        reset();
+        gen();
+        genCount++;
+    }
+    while (!isDesirable());
+
+    console.log(genCount);
 };
 
 var drawCells = function(ctx,left,top,size,title) {
     ctx.save();
     ctx.translate(left,top);
+
+    // draw title
     ctx.font = "bold " + size/3*2 + "px sans-serif";
     ctx.textBaseline = "bottom";
     ctx.textAlign = "left";
-
     ctx.fillText(title, 0, -5);
+
+    // set cell number font
+    ctx.font = size/2 + "px sans-serif";
+    ctx.textBaseline = "top";
 
     ctx.beginPath();
     for (y=0; y<=rows; y++) {
@@ -294,6 +420,10 @@ var drawCells = function(ctx,left,top,size,title) {
         var c = cells[i];
         var x = i % cols;
         var y = Math.floor(i / cols);
+
+        if (c.no != undefined) {
+            ctx.fillText(c.no, x*size+3, y*size+3);
+        }
 
         if (!c.connect[UP]) {
             ctx.moveTo(x*size, y*size);
