@@ -65,56 +65,76 @@ var reset = function() {
 };
 
 var presets = {
-    'pacman':
-        '^><><' +
-        'm<v><' +
-        '^>3rm' +
-        'm7^Lw' +
-        'wJvrm' +
-        'm<^Lw' +
-        '^><r<' +
-        'm<v^>' +
-        '^>w-<',
-    'mspacman1': 
-        '-<^><' +
-        'v><v>' +
-        'w<>Jr' +
-        'm7>7E' +
-        'wJv^L' +
-        'v>w<r' +
-        'w<><L' +
-        'v>7r7' +
-        'w<^LJ',
-    'mspacman2':
-        'm<^>-' +
-        '^v>-7' +
-        '-Jr<^' +
-        'm7^>-' +
-        'wJvr<' +
-        'v>J^r' +
-        '^>m<L' +
-        'm<^v>' +
-        '^><L<',
-    'mspacman3':
-        'v^>-7' +
-        '^><v^' +
-        '-<>Jv' +
-        'm7v>J' +
-        'wJL<v' +
-        'v>7>J' +
-        'w<^v>' +
-        'v>7L<' +
-        'w<|><',
-    'mspacman4':
-        '-7><v' +
-        'v^v>J' +
-        '^>+<r' +
-        'm7^vL' +
-        'wJvE<' +
-        'v>J^r' +
-        '^v><L' +
-        '-Jv>7' +
-        'v>w<^',
+    'pacman': {
+        map:
+            '^><><' +
+            'm<v><' +
+            '^>3rm' +
+            'm7^Lw' +
+            'wJvrm' +
+            'm<^Lw' +
+            '^><r<' +
+            'm<v^>' +
+            '^>w-<',
+        tallRows: [0,0,0,0,0],
+        narrowCols: [4,4,4,4,4,4,4,4,4],
+    },
+    'mspacman1': {
+        map:
+            '-<^><' +
+            'v><v>' +
+            'w<>Jr' +
+            'm7>7E' +
+            'wJv^L' +
+            'v>w<r' +
+            'w<><L' +
+            'v>7r7' +
+            'w<^LJ',
+        tallRows: [1,1,1,1,1],
+        narrowCols: [4,4,4,4,4,4,4,4,4],
+    },
+    'mspacman2': {
+        map:
+            'm<^>-' +
+            '^v>-7' +
+            '-Jr<^' +
+            'm7^>-' +
+            'wJvr<' +
+            'v>J^r' +
+            '^>m<L' +
+            'm<^v>' +
+            '^><L<',
+        tallRows: [1,1,4,5,5],
+        narrowCols: [4,3,3,4,4,4,4,4,4],
+    },
+    'mspacman3': {
+        map:
+            'v^>-7' +
+            '^><v^' +
+            '-<>Jv' +
+            'm7v>J' +
+            'wJL<v' +
+            'v>7>J' +
+            'w<^v>' +
+            'v>7L<' +
+            'w<|><',
+        tallRows: [1,1,1,1,1],
+        narrowCols: [3,2,2,3,3,3,4,4,4],
+    },
+    'mspacman4': {
+        map:
+            '-7><v' +
+            'v^v>J' +
+            '^>+<r' +
+            'm7^vL' +
+            'wJvE<' +
+            'v>J^r' +
+            '^v><L' +
+            '-Jv>7' +
+            'v>w<^',
+        tallRows: [1,1,0,0,0],
+        narrowCols: [3,3,4,4,4,4,4,3,3],
+    },
 };
 
 var genPreset = function(name) {
@@ -123,7 +143,7 @@ var genPreset = function(name) {
     var i,c;
     for (i=0; i<rows*cols; i++) {
         c = cells[i].connect;
-        switch (p[i]) {
+        switch (p.map[i]) {
             case '>': c[RIGHT] = true; break;
             case '<': c[LEFT] = true; break;
             case '^': c[UP] = true; break;
@@ -141,6 +161,14 @@ var genPreset = function(name) {
             case '+': c[DOWN] = c[RIGHT] = c[UP] = c[LEFT] = true; break;
         }
     }
+
+    for (i=0; i<cols; i++) {
+        cells[cols*p.tallRows[i]+i].raiseHeight = true;
+    }
+    for (i=0; i<rows; i++) {
+        cells[i*cols+p.narrowCols[i]].shrinkWidth = true;
+    }
+
 };
 
 var isCellConnection = function(cell,key) {
@@ -345,17 +373,53 @@ var genRandom = function() {
                         // With a vertical 2-cell piece, attach to the right wall if adjacent.
                         var c = firstCell;
                         if (c.x == cols-1) {
+
+                            // select the top cell
                             if (c.connect[UP]) {
-                                c.connect[RIGHT] = c.next[UP].connect[RIGHT] = true;
+                                c = c.next[UP];
                             }
-                            else {
-                                c.connect[RIGHT] = c.next[DOWN].connect[RIGHT] = true;
+                            c.connect[RIGHT] = c.next[DOWN].connect[RIGHT] = true;
+
+                            // if there is a vertical 2-cell piece to the left of this, then
+                            // join it to form a square.
+                            var c1 = c.next[LEFT];
+                            var c2 = c1.next[DOWN];
+                            if (!c1.connect[UP] && !c1.connect[LEFT] && c1.connect[DOWN] &&
+                                !c2.connect[DOWN] && !c2.connect[LEFT] && c2.connect[UP]) {
+                                c1.connect[RIGHT] = c2.connect[RIGHT] = true;
                             }
                         }
 
                     }
 
                     break;
+                }
+            }
+        }
+        determineCellFlex();
+    };
+
+    var determineCellFlex = function() {
+        var i;
+        for (i=0; i<rows*cols; i++) {
+            var c = cells[i];
+            var x = i % cols;
+            var y = Math.floor(i/cols);
+
+            var q = c.connect;
+            if ((c.x == 0 || !q[LEFT]) &&
+                (c.x == cols-1 || !q[RIGHT]) &&
+                q[UP] != q[DOWN]) {
+                c.flexHeight = true;
+            }
+
+            var c2 = c.next[RIGHT];
+            if (c2 != undefined) {
+                var q2 = c2.connect;
+                if (((c.x == 0 || !q[LEFT]) && !q[UP] && !q[DOWN]) &&
+                    ((c2.x == cols-1 || !q2[RIGHT]) && !q2[UP] && !q2[DOWN])
+                    ) {
+                    c.flexHeight = c2.flexHeight = true;
                 }
             }
         }
@@ -397,11 +461,6 @@ var drawCells = function(ctx,left,top,size,title) {
     ctx.textAlign = "left";
     ctx.fillText(title, 0, -5);
 
-    // set cell number font
-    ctx.font = size/2 + "px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "center";
-
     ctx.beginPath();
     for (y=0; y<=rows; y++) {
         ctx.moveTo(0,y*size);
@@ -422,10 +481,7 @@ var drawCells = function(ctx,left,top,size,title) {
         var x = i % cols;
         var y = Math.floor(i / cols);
 
-        if (c.no != undefined) {
-            ctx.fillText(c.no, x*size+size/2, y*size+size/2);
-        }
-
+        // draw walls
         if (!c.connect[UP]) {
             ctx.moveTo(x*size, y*size);
             ctx.lineTo(x*size+size, y*size);
@@ -446,6 +502,56 @@ var drawCells = function(ctx,left,top,size,title) {
     ctx.lineWidth = "3";
     ctx.strokeStyle = "#000";
     ctx.stroke();
+
+    // set cell number font
+    ctx.font = size/2 + "px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+
+    var arrowsize = size/6;
+
+    ctx.lineWidth = "3";
+    for (i=0; i<cols*rows; i++) {
+        var c = cells[i];
+        var x = i % cols;
+        var y = Math.floor(i / cols);
+
+        if (c.flexHeight) {
+            ctx.fillStyle = "rgba(0,255,0,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (c.raiseHeight) {
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(x*size+size/2,y*size+size-arrowsize);
+            ctx.moveTo(-arrowsize,-arrowsize);
+            ctx.lineTo(0,0);
+            ctx.lineTo(arrowsize,-arrowsize);
+            ctx.strokeStyle = "rgba(0,0,255,0.7)";
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        if (c.shrinkWidth) {
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(x*size+size-arrowsize-arrowsize,y*size+size/2);
+            ctx.moveTo(arrowsize,-arrowsize);
+            ctx.lineTo(0,0);
+            ctx.lineTo(arrowsize,arrowsize);
+            ctx.restore();
+            ctx.strokeStyle = "rgba(255,0,0,0.7)";
+            ctx.stroke();
+        }
+
+        // draw cell number (order)
+        if (c.no != undefined) {
+            ctx.fillStyle = "#000";
+            ctx.fillText(c.no, x*size+size/2, y*size+size/2);
+        }
+    }
+
     ctx.restore();
 };
 
