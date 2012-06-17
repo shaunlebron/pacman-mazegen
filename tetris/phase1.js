@@ -367,6 +367,7 @@ var genRandom = function() {
                         // This is provably a single cell piece on the right edge of the map.
                         // It must be attached to the outer wall.
                         cell.connect[RIGHT] = true;
+                        cell.flexHeight = true;
                     }
                     else if (size == 2) {
 
@@ -399,6 +400,7 @@ var genRandom = function() {
         determineCellFlex();
     };
 
+
     var determineCellFlex = function() {
         var i;
         for (i=0; i<rows*cols; i++) {
@@ -425,6 +427,64 @@ var genRandom = function() {
         }
     };
 
+    var chooseTallRows = function() {
+        var tallRows = [];
+
+        var canRaiseHeight = function(x,y) {
+
+            // Can cause no more tight turns.
+            if (x==cols-1) {
+                return true;
+            }
+
+            // find the first cell below that will create too tight a turn on the right
+            var y0;
+            var c;
+            var c2;
+            for (y0=y; y0<rows; y0++) {
+                c = cells[x+y0*cols];
+                c2 = c.next[RIGHT]
+                if (!c.connect[DOWN] && !c2.connect[DOWN]) {
+                    break;
+                }
+            }
+
+            // Proceed from the right cell upwards, looking for a cell that can be raised.
+            while (c2) {
+                if (c2.flexHeight) {
+
+                    if (!c2.connect[DOWN] && !c2.next[LEFT].connect[DOWN] && y > c2.y) {
+                        // Raising this cell will create an irreconcilable tight turn on the left.
+                        return false;
+                    }
+                    if (canRaiseHeight(c2.x,c2.y)) {
+                        c2.raiseHeight = true;
+                        return true;
+                    }
+                }
+                c2 = c2.next[UP];
+            }
+
+            return false;
+        };
+
+        // From the top left, examine cells below until hitting top of ghost house.
+        // A raisable cell must be found before the ghost house.
+        var y;
+        var c;
+        for (y=0; y<3; y++) {
+            c = cells[y*cols];
+            if (c.flexHeight) {
+                if (canRaiseHeight(0,y)) {
+                    c.raiseHeight = true;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    };
+
     // This is a function to detect impurities in the map that have no heuristic implemented to avoid it yet in gen().
     var isDesirable = function() {
 
@@ -437,9 +497,15 @@ var genRandom = function() {
         if (c.connect[DOWN] || c.connect[RIGHT]) {
             return false;
         }
+
+        if (!chooseTallRows()) {
+            return false;
+        }
+
         return true;
     };
 
+    // try to generate a valid map, and keep count of tries.
     var genCount = 0;
     do {
         reset();
@@ -448,6 +514,7 @@ var genRandom = function() {
     }
     while (!isDesirable());
 
+    // print out the number of tries to generate a valid map.
     console.log(genCount);
 };
 
@@ -500,13 +567,13 @@ var drawCells = function(ctx,left,top,size,title) {
         }
     }
     ctx.lineWidth = "3";
-    ctx.strokeStyle = "#000";
+    ctx.strokeStyle = "rgba(0,0,0,0.5)";
     ctx.stroke();
 
     // set cell number font
     ctx.font = size/2 + "px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
 
     var arrowsize = size/6;
 
@@ -548,7 +615,7 @@ var drawCells = function(ctx,left,top,size,title) {
         // draw cell number (order)
         if (c.no != undefined) {
             ctx.fillStyle = "#000";
-            ctx.fillText(c.no, x*size+size/2, y*size+size/2);
+            ctx.fillText(c.no, x*size+2, y*size+2);
         }
     }
 
