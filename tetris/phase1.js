@@ -532,29 +532,28 @@ var genRandom = function() {
             var y0;
             var c;
             var c2;
-            for (y0=y; y0<rows; y0++) {
+            for (y0=y; y0>=0; y0--) {
                 c = cells[x+y0*cols];
                 c2 = c.next[RIGHT]
-                if (!c.connect[DOWN] && !c2.connect[DOWN]) {
+                if (!c.connect[UP] && !c2.connect[UP]) {
                     break;
                 }
             }
 
             // Proceed from the right cell upwards, looking for a cell that can be raised.
             while (c2) {
-                if (c2.isRaiseHeightCandidate) {
 
-                    if (!c2.connect[DOWN] && !c2.next[LEFT].connect[DOWN] && y > c2.y) {
-                        // Raising this cell will create an irreconcilable tight turn on the left.
-                        return false;
-                    }
-                    if (canRaiseHeight(c2.x,c2.y)) {
-                        c2.raiseHeight = true;
-                        tallRows[c2.x] = c2.y;
-                        return true;
-                    }
+                if (c2.isRaiseHeightCandidate && canRaiseHeight(c2.x,c2.y)) {
+                    c2.raiseHeight = true;
+                    tallRows[c2.x] = c2.y;
+                    return true;
                 }
-                c2 = c2.next[UP];
+
+                // cannot proceed further without causing irreconcilable tight turns
+                if (!c2.connect[DOWN] && !c2.next[LEFT].connect[DOWN]) {
+                    break;
+                }
+                c2 = c2.next[DOWN];
             }
 
             return false;
@@ -600,6 +599,24 @@ var genRandom = function() {
         return true;
     };
 
+    // set the final position and size of each cell when upscaling the simple model to actual size
+    var setUpScaleCoords = function() {
+        var i,c;
+        for (i=0; i<rows*cols; i++) {
+            c = cells[i];
+            c.final_x = c.x*3;
+            if (narrowCols[c.y] < c.x) {
+                c.final_x--;
+            }
+            c.final_y = c.y*3;
+            if (tallRows[c.x] < c.y) {
+                c.final_y++;
+            }
+            c.final_w = c.shrinkWidth ? 2 : 3;
+            c.final_h = c.raiseHeight ? 4 : 3;
+        }
+    };
+
     // try to generate a valid map, and keep count of tries.
     var genCount = 0;
     do {
@@ -608,6 +625,9 @@ var genRandom = function() {
         genCount++;
     }
     while (!isDesirable());
+
+    // set helper attributes to position each cell
+    setUpScaleCoords();
 
     // print out the number of tries to generate a valid map.
     console.log(genCount);
@@ -727,9 +747,66 @@ var drawCells = function(ctx,left,top,size,title) {
     ctx.restore();
 };
 
-var drawResult = function(ctx,left,top,size,title) {
+var drawResult = function(ctx,left,top,size) {
     ctx.save();
     ctx.translate(left,top);
+
+    var subsize = size / 3;
+    var subrows = rows*3+1;
+    var subcols = cols*3-1;
+
+    // draw grid
+    ctx.beginPath();
+    var i;
+    var x,y;
+    for (i=0; i<=subrows; i++) {
+        y = i*subsize;
+        ctx.moveTo(0,y);
+        ctx.lineTo(subcols*subsize,y);
+    }
+    for (i=0; i<=subcols; i++) {
+        x = i*subsize;
+        ctx.moveTo(x,0);
+        ctx.lineTo(x,subrows*subsize);
+    }
+    ctx.lineWidth = "1";
+    ctx.strokeStyle = "rgba(0,0,0,0.3)";
+    ctx.stroke();
+
+    // draw cells
+    ctx.beginPath();
+    var c,c0,c1,c2,c3;
+    var w,h;
+    for (i=0; i<rows*cols; i++) {
+
+        c = cells[i];
+
+        x = c.final_x*subsize;
+        y = c.final_y*subsize;
+        w = c.final_w*subsize;
+        h = c.final_h*subsize;
+
+        // draw walls
+        if (!c.connect[UP]) {
+            ctx.moveTo(x, y);
+            ctx.lineTo(x+w, y);
+        }
+        if (!c.connect[DOWN]) {
+            ctx.moveTo(x, y+h);
+            ctx.lineTo(x+w, y+h);
+        }
+        if (!c.connect[LEFT]) {
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y+h);
+        }
+        if (!c.connect[RIGHT]) {
+            ctx.moveTo(x+w, y);
+            ctx.lineTo(x+w, y+h);
+        }
+    }
+    ctx.lineWidth = "3";
+    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.stroke();
 
     ctx.restore();
 };

@@ -9,13 +9,14 @@ window.onload = function() {
     var size = 30;
 
     var canvas = document.getElementById('canvas');
-    canvas.width = (cols+2)*size;
-    canvas.height = (rows+2)*size;
+    canvas.width = 2*(cols+2)*size;
+    canvas.height = 2*(rows+2)*size;
 
     var ctx = canvas.getContext('2d');
 
     genRandom();
     drawCells(ctx,size,size,size,"");
+    drawResult(ctx,(cols+2)*size,size,size);
 };
 
 </script>
