@@ -8,6 +8,8 @@ var DOWN = 2;
 var LEFT = 3;
 
 var cells = [];
+var tallRows = [];
+var narrowCols = [];
 
 var rows = 9;
 var cols = 5;
@@ -367,7 +369,7 @@ var genRandom = function() {
                         // This is provably a single cell piece on the right edge of the map.
                         // It must be attached to the outer wall.
                         cell.connect[RIGHT] = true;
-                        cell.flexHeight = true;
+                        cell.isRaiseHeightCandidate = true;
                     }
                     else if (size == 2) {
 
@@ -383,12 +385,14 @@ var genRandom = function() {
 
                             // if there is a vertical 2-cell piece to the left of this, then
                             // join it to form a square.
+                            /*
                             var c1 = c.next[LEFT];
                             var c2 = c1.next[DOWN];
                             if (!c1.connect[UP] && !c1.connect[LEFT] && c1.connect[DOWN] &&
                                 !c2.connect[DOWN] && !c2.connect[LEFT] && c2.connect[UP]) {
                                 c1.connect[RIGHT] = c2.connect[RIGHT] = true;
                             }
+                            */
                         }
 
                     }
@@ -397,38 +401,125 @@ var genRandom = function() {
                 }
             }
         }
-        determineCellFlex();
+        setResizeCandidates();
     };
 
 
-    var determineCellFlex = function() {
+    var setResizeCandidates = function() {
         var i;
+        var c,q,c2,q2;
+        var x,y;
         for (i=0; i<rows*cols; i++) {
-            var c = cells[i];
-            var x = i % cols;
-            var y = Math.floor(i/cols);
+            c = cells[i];
+            x = i % cols;
+            y = Math.floor(i/cols);
 
-            var q = c.connect;
+            // determine if it has flexible height
+
+            //
+            // |_|
+            //
+            // or
+            //  _
+            // | |
+            //
+            q = c.connect;
             if ((c.x == 0 || !q[LEFT]) &&
                 (c.x == cols-1 || !q[RIGHT]) &&
                 q[UP] != q[DOWN]) {
-                c.flexHeight = true;
+                c.isRaiseHeightCandidate = true;
             }
 
-            var c2 = c.next[RIGHT];
+            //  _ _
+            // |_ _|
+            //
+            c2 = c.next[RIGHT];
             if (c2 != undefined) {
-                var q2 = c2.connect;
+                q2 = c2.connect;
                 if (((c.x == 0 || !q[LEFT]) && !q[UP] && !q[DOWN]) &&
                     ((c2.x == cols-1 || !q2[RIGHT]) && !q2[UP] && !q2[DOWN])
                     ) {
-                    c.flexHeight = c2.flexHeight = true;
+                    c.isRaiseHeightCandidate = c2.isRaiseHeightCandidate = true;
                 }
             }
+
+            // determine if it has flexible width
+
+            // if cell is on the right edge with an opening to the right
+            if (c.x == cols-1 && q[RIGHT]) {
+                c.isShrinkWidthCandidate = true;
+            }
+
+            //  _
+            // |_
+            // 
+            // or
+            //  _
+            //  _|
+            //
+            if ((c.y == 0 || !q[UP]) &&
+                (c.y == rows-1 || !q[DOWN]) &&
+                q[LEFT] != q[RIGHT]) {
+                c.isShrinkWidthCandidate = true;
+            }
+
         }
     };
 
+    var chooseNarrowCols = function() {
+
+        var canShrinkWidth = function(x,y) {
+
+            // Can cause no more tight turns.
+            if (y==rows-1) {
+                return true;
+            }
+
+            // get the right-hand-side bound
+            var x0;
+            var c,c2;
+            for (x0=x; x0<cols; x0++) {
+                c = cells[x0+y*cols];
+                c2 = c.next[DOWN]
+                if (!c.connect[RIGHT] && !c2.connect[RIGHT]) {
+                    break;
+                }
+            }
+
+            while (c2) {
+
+                if (c2.isShrinkWidthCandidate && canShrinkWidth(c2.x,c2.y)) {
+                    c2.shrinkWidth = true;
+                    narrowCols[c2.y] = c2.x;
+                    return true;
+                }
+
+                // cannot proceed further without causing irreconcilable tight turns
+                if (!c2.connect[LEFT] && !c2.next[UP].connect[LEFT]) {
+                    break;
+                }
+
+                c2 = c2.next[LEFT];
+            }
+
+            return false;
+        };
+
+        var x;
+        var c;
+        for (x=cols-1; x>=0; x--) {
+            c = cells[x];
+            if (c.isShrinkWidthCandidate && canShrinkWidth(x,0)) {
+                c.shrinkWidth = true;
+                narrowCols[c.y] = c.x;
+                return true;
+            }
+        }
+
+        return false;
+    };
+
     var chooseTallRows = function() {
-        var tallRows = [];
 
         var canRaiseHeight = function(x,y) {
 
@@ -451,7 +542,7 @@ var genRandom = function() {
 
             // Proceed from the right cell upwards, looking for a cell that can be raised.
             while (c2) {
-                if (c2.flexHeight) {
+                if (c2.isRaiseHeightCandidate) {
 
                     if (!c2.connect[DOWN] && !c2.next[LEFT].connect[DOWN] && y > c2.y) {
                         // Raising this cell will create an irreconcilable tight turn on the left.
@@ -459,6 +550,7 @@ var genRandom = function() {
                     }
                     if (canRaiseHeight(c2.x,c2.y)) {
                         c2.raiseHeight = true;
+                        tallRows[c2.x] = c2.y;
                         return true;
                     }
                 }
@@ -474,11 +566,10 @@ var genRandom = function() {
         var c;
         for (y=0; y<3; y++) {
             c = cells[y*cols];
-            if (c.flexHeight) {
-                if (canRaiseHeight(0,y)) {
-                    c.raiseHeight = true;
-                    return true;
-                }
+            if (c.isRaiseHeightCandidate && canRaiseHeight(0,y)) {
+                c.raiseHeight = true;
+                tallRows[c.x] = c.y;
+                return true;
             }
         }
 
@@ -499,6 +590,10 @@ var genRandom = function() {
         }
 
         if (!chooseTallRows()) {
+            return false;
+        }
+
+        if (!chooseNarrowCols()) {
             return false;
         }
 
@@ -577,18 +672,28 @@ var drawCells = function(ctx,left,top,size,title) {
 
     var arrowsize = size/6;
 
+    var drawRaiseHeightCandidate = false;
+    var drawShrinkWidthCandidate = false;
+    var drawRaiseHeight = true;
+    var drawShrinkWidth = true;
+
     ctx.lineWidth = "3";
     for (i=0; i<cols*rows; i++) {
         var c = cells[i];
         var x = i % cols;
         var y = Math.floor(i / cols);
 
-        if (c.flexHeight) {
-            ctx.fillStyle = "rgba(0,255,0,0.2)";
+        if (drawRaiseHeightCandidate && c.isRaiseHeightCandidate) {
+            ctx.fillStyle = "rgba(0,0,255,0.2)";
             ctx.fillRect(x*size,y*size,size,size);
         }
 
-        if (c.raiseHeight) {
+        if (drawShrinkWidthCandidate && c.isShrinkWidthCandidate) {
+            ctx.fillStyle = "rgba(255,0,0,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (drawRaiseHeight && c.raiseHeight) {
             ctx.beginPath();
             ctx.save();
             ctx.translate(x*size+size/2,y*size+size-arrowsize);
@@ -600,7 +705,7 @@ var drawCells = function(ctx,left,top,size,title) {
             ctx.restore();
         }
 
-        if (c.shrinkWidth) {
+        if (drawShrinkWidth && c.shrinkWidth) {
             ctx.beginPath();
             ctx.save();
             ctx.translate(x*size+size-arrowsize-arrowsize,y*size+size/2);
@@ -622,3 +727,9 @@ var drawCells = function(ctx,left,top,size,title) {
     ctx.restore();
 };
 
+var drawResult = function(ctx,left,top,size,title) {
+    ctx.save();
+    ctx.translate(left,top);
+
+    ctx.restore();
+};
