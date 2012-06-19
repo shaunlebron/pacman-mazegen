@@ -633,6 +633,115 @@ var genRandom = function() {
     console.log(genCount);
 };
 
+var getTiles = function() {
+
+    var tiles = [];
+    var subrows = rows*3+1+3;
+    var subcols = cols*3-1+2;
+
+    var setTile = function(x,y,v) {
+        if (x<0 || x>subcols-1 || y<0 || y>subrows-1) {
+            return;
+        }
+        tiles[x+y*subcols] = v;
+    };
+
+    var getTile = function(x,y) {
+        if (x<0 || x>subcols-1 || y<0 || y>subrows-1) {
+            return undefined;
+        }
+        return tiles[x+y*subcols];
+    };
+
+    // initialize cells
+    var i;
+    for (i=0; i<subrows*subcols; i++) {
+        tiles.push('_')
+    }
+
+    // set paths
+    var c;
+    var x,y,w,h;
+    var j;
+    for (i=0; i<rows*cols; i++) {
+
+        c = cells[i];
+
+        x = c.final_x;
+        y = c.final_y+1;
+        w = c.final_w;
+        h = c.final_h;
+
+        if (!c.connect[UP]) {
+            for (j=0; j<w; j++) {
+                setTile(x+j,y,'.');
+            }
+        }
+        if (!c.connect[LEFT]) {
+            for (j=0; j<h; j++) {
+                setTile(x,y+j,'.');
+            }
+        }
+
+        if (i % cols == cols-1 && !c.connect[RIGHT]) {
+            for (j=0; j<h; j++) {
+                setTile(x+w,y+j,'.');
+            }
+        }
+
+        if (Math.floor(i/cols) == rows-1 && !c.connect[DOWN]) {
+            for (j=0; j<w; j++) {
+                setTile(x+j,y+h,'.');
+            }
+        }
+    }
+
+    var pathUp, pathDown, pathLeft, pathRight;
+
+    // fill in path corners
+    for (i=0; i<subrows*subcols; i++) {
+        x = i % subcols;
+        y = Math.floor(i/subcols);
+
+        if (getTile(x,y) == '.') {
+            continue;
+        }
+
+        pathUp = getTile(x,y-1) == '.' && getTile(x,y-2) == '.';
+        pathDown = getTile(x,y+1) == '.' && getTile(x,y+2) == '.';
+        pathRight = getTile(x+1,y) == '.' && getTile(x+2,y) == '.';
+        pathLeft = getTile(x-1,y) == '.' && getTile(x-2,y) == '.';
+
+        if ( (pathUp && pathLeft) || (pathUp && pathRight) ||
+             (pathDown && pathLeft) || (pathDown && pathRight)) {
+            setTile(x,y,'.');
+        }
+    }
+
+    // TODO: choose tunnels
+
+    // fill in walls
+    /*
+    for (i=0; i<subrows*subcols; i++) {
+        x = i % subcols;
+        y = Math.floor(i/subcols);
+
+        if (getTile(x,y) == '.') {
+            continue;
+        }
+
+        if (getTile(x-1,y) == '.' || getTile(x,y-1) == '.' || getTile(x+1,y) == '.' || getTile(x,y+1) == '.' ||
+            getTile(x-1,y-1) == '.' || getTile(x+1,y-1) == '.' || getTile(x+1,y+1) == '.' || getTile(x-1,y+1) == '.') {
+            setTile(x,y,'|');
+        }
+    }
+    */
+
+    // TODO: double width of map and reflect the map over the y axis
+
+    return tiles;
+};
+
 var drawCells = function(ctx,left,top,size,title) {
     ctx.save();
     ctx.translate(left,top);
@@ -682,7 +791,7 @@ var drawCells = function(ctx,left,top,size,title) {
         }
     }
     ctx.lineWidth = "3";
-    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.strokeStyle = "rgba(0,0,0,0.9)";
     ctx.stroke();
 
     // set cell number font
@@ -692,8 +801,8 @@ var drawCells = function(ctx,left,top,size,title) {
 
     var arrowsize = size/6;
 
-    var drawRaiseHeightCandidate = false;
-    var drawShrinkWidthCandidate = false;
+    var drawRaiseHeightCandidate = true;
+    var drawShrinkWidthCandidate = true;
     var drawRaiseHeight = true;
     var drawShrinkWidth = true;
 
@@ -791,13 +900,13 @@ var drawResult = function(ctx,left,top,size) {
             ctx.moveTo(x, y);
             ctx.lineTo(x+w, y);
         }
-        if (!c.connect[DOWN]) {
-            ctx.moveTo(x, y+h);
-            ctx.lineTo(x+w, y+h);
-        }
         if (!c.connect[LEFT]) {
             ctx.moveTo(x, y);
             ctx.lineTo(x, y+h);
+        }
+        if (!c.connect[DOWN]) {
+            ctx.moveTo(x, y+h);
+            ctx.lineTo(x+w, y+h);
         }
         if (!c.connect[RIGHT]) {
             ctx.moveTo(x+w, y);
@@ -807,6 +916,122 @@ var drawResult = function(ctx,left,top,size) {
     ctx.lineWidth = "3";
     ctx.strokeStyle = "rgba(0,0,0,0.5)";
     ctx.stroke();
+
+    ctx.restore();
+};
+
+var drawResult2 = function(ctx,left,top,size) {
+    ctx.save();
+    ctx.translate(left,top);
+
+    var subsize = size / 3;
+    var subrows = rows*3+1+3;
+    var subcols = cols*3-1+2;
+
+    // draw grid
+    var i;
+    var x,y;
+    ctx.beginPath();
+    for (i=0; i<=subrows; i++) {
+        y = i*subsize;
+        ctx.moveTo(0,y);
+        ctx.lineTo(subcols*subsize,y);
+    }
+    for (i=0; i<=subcols; i++) {
+        x = i*subsize;
+        ctx.moveTo(x,0);
+        ctx.lineTo(x,subrows*subsize);
+    }
+    ctx.lineWidth = "1";
+    ctx.strokeStyle = "rgba(0,0,0,0.3)";
+    ctx.stroke();
+
+    // draw cells
+    ctx.fillStyle = "rgba(0,0,0,1)";
+    var c,c0,c1,c2,c3;
+    var w,h;
+    var j;
+    ctx.beginPath();
+    for (i=0; i<rows*cols; i++) {
+
+        c = cells[i];
+
+        x = c.final_x*subsize;
+        y = c.final_y*subsize+subsize;
+        w = c.final_w*subsize;
+        h = c.final_h*subsize;
+
+        // draw walls
+        if (!c.connect[UP]) {
+            ctx.fillRect(x,y,w,subsize);
+        }
+        if (!c.connect[LEFT]) {
+            ctx.fillRect(x,y,subsize,h);
+        }
+
+        if (i % cols == cols-1) {
+            if (!c.connect[RIGHT]) {
+                ctx.fillRect(x+w,y,subsize,h);
+            }
+        }
+
+        if (Math.floor(i/cols) == rows-1) {
+            if (!c.connect[DOWN]) {
+                ctx.fillRect(x,y+h,w,subsize);
+            }
+        }
+    }
+    ctx.lineWidth = "3";
+    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.stroke();
+
+    ctx.restore();
+};
+
+var drawTiles = function(ctx,left,top,size) {
+    ctx.save();
+    ctx.translate(left,top);
+
+    var subsize = size / 3;
+    var subrows = rows*3+1+3;
+    var subcols = cols*3-1+2;
+
+    // draw grid
+    var i;
+    var x,y;
+    ctx.beginPath();
+    for (i=0; i<=subrows; i++) {
+        y = i*subsize;
+        ctx.moveTo(0,y);
+        ctx.lineTo(subcols*subsize,y);
+    }
+    for (i=0; i<=subcols; i++) {
+        x = i*subsize;
+        ctx.moveTo(x,0);
+        ctx.lineTo(x,subrows*subsize);
+    }
+    ctx.lineWidth = "1";
+    ctx.strokeStyle = "rgba(0,0,0,0.3)";
+    ctx.stroke();
+
+    // draw tiles
+
+    var tiles = getTiles();
+
+    fillStyles = {
+        '.' : 'rgba(0,0,0,0.3)',
+        '|' : 'rgba(0,0,0,0.8)',
+        '_' : 'rgba(0,0,0,0)',
+    };
+    var x,y;
+    var color;
+    for (i=0; i<subrows*subcols; i++) {
+        x = i % subcols;
+        y = Math.floor(i/subcols);
+
+        ctx.fillStyle = fillStyles[tiles[i]];
+        ctx.fillRect(x*subsize,y*subsize,subsize,subsize);
+    }
 
     ctx.restore();
 };
