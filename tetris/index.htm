@@ -1,5 +1,6 @@
 
 <script src="phase1.js"></script>
+<script src="Map.js"></script>
 
 <canvas id='canvas'></canvas>
 
@@ -9,16 +10,27 @@ window.onload = function() {
     var size = 30;
 
     var canvas = document.getElementById('canvas');
-    canvas.width = 3*(cols+2)*size;
-    canvas.height = 2*(rows+2)*size;
+    canvas.width = ((cols+1)*4+4)*size;
+    canvas.height = (rows+2)*size;
 
     var ctx = canvas.getContext('2d');
 
     genRandom();
-    drawCells(ctx,size,size,size,"");
-    drawResult(ctx,(cols+2)*size,size,size);
+    drawCells(ctx,size,size,size,"Simple Model",false,false,false,false,true);
+    drawCells(ctx,(cols+2)*size,size,size,"Height Adjustments",true,true,false,false);
+    drawCells(ctx,(2*cols+3)*size,size,size,"Width Adjustments",false,false,true,true);
+
+    var map = new Map(28,31,getTiles());
+    map.wallStrokeColor = "#47b897"; // from Pac-Man Plus (easier to see)
+    //mapPacman.wallStrokeColor = "#2121ff"; // from original
+    map.wallFillColor = "#000";
+    map.pelletColor = "#ffb8ae";
+    map.draw(ctx,(3*cols+4)*size,size,true);
+
+    //drawResult(ctx,(cols+2)*size,size,size);
     //drawResult2(ctx,(2*cols+3)*size,size,size);
-    drawTiles(ctx,(2*cols+3)*size,size,size);
+    //drawTiles(ctx,(cols+2)*size,size,size);
+
 };
 
 </script>

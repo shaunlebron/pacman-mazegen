@@ -1,5 +1,14 @@
-
 # Generate Pac-Man Mazes using Tetris-stacking
+
+## Progress
+
+This is a sample of the current generating model:
+
+<img src="https://github.com/shaunew/Pac-Man/raw/gh-pages/mapgen/tetris/working.png" />
+
+[Click here to view the actual demo.](http://shaunew.github.com/Pac-Man/mapgen/tetris)
+
+## Summary
 
 In the pursuit of a simple maze generator for Pac-Man, we first visualize the
 structure of the original Pac-Man maps as a tiling of blocks.  Then, we attempt

@@ -617,6 +617,22 @@ var genRandom = function() {
         }
     };
 
+    // get rid of the tunnel paths.
+    // We will create these in post process.  They only emerge here
+    // in the simplified model because small blocks are only good for
+    // keeping the generator rules consistent.
+    var eraseTunnels = function() {
+        var c = cells[2*cols-1];
+        var c2;
+        while (c.next[DOWN]) {
+            var c2 = c.next[DOWN];
+            if (c.connect[RIGHT] && c2.connect[RIGHT] && !c.connect[DOWN]) {
+                c.connect[DOWN] = c2.connect[UP] = true;
+            }
+            c = c2;
+        }
+    };
+
     // try to generate a valid map, and keep count of tries.
     var genCount = 0;
     do {
@@ -629,6 +645,9 @@ var genRandom = function() {
     // set helper attributes to position each cell
     setUpScaleCoords();
 
+    // destroy some connections to hide tunnels.
+    eraseTunnels();
+
     // print out the number of tries to generate a valid map.
     console.log(genCount);
 };
@@ -639,23 +658,29 @@ var getTiles = function() {
     var subrows = rows*3+1+3;
     var subcols = cols*3-1+2;
 
+    var midcols = subcols-2;
+    var fullcols = (subcols-2)*2;
+
     var setTile = function(x,y,v) {
         if (x<0 || x>subcols-1 || y<0 || y>subrows-1) {
             return;
         }
-        tiles[x+y*subcols] = v;
+        x -= 2;
+        tiles[midcols+x+y*fullcols] = v;
+        tiles[midcols-1-x+y*fullcols] = v;
     };
 
     var getTile = function(x,y) {
         if (x<0 || x>subcols-1 || y<0 || y>subrows-1) {
             return undefined;
         }
-        return tiles[x+y*subcols];
+        x -= 2;
+        return tiles[midcols+x+y*fullcols];
     };
 
     // initialize cells
     var i;
-    for (i=0; i<subrows*subcols; i++) {
+    for (i=0; i<subrows*fullcols; i++) {
         tiles.push('_')
     }
 
@@ -718,10 +743,37 @@ var getTiles = function() {
         }
     }
 
-    // TODO: choose tunnels
+    // choose tunnels
+    var x;
+    var minx = subcols;
+    var tunnely;
+
+    // start from center and move down
+    for (y=Math.floor(subrows/2); y<subrows; y++) {
+        for(x=subcols-1; getTile(x,y) == '_'; x--) {
+        }
+        if (getTile(x-1,y) == '.' && x < minx) {
+            minx = x;
+            tunnely = y;
+        }
+    }
+
+    // start from center and move up
+    for (y=Math.floor(subrows/2); y>=0; y--) {
+        for(x=subcols-1; getTile(x,y) == '_'; x--) {
+        }
+        if (getTile(x-1,y) == '.' && x < minx) {
+            minx = x;
+            tunnely = y;
+        }
+    }
+
+    // create tunnel
+    for (x=minx; x<subcols+2; x++) {
+        setTile(x,tunnely,'.');
+    }
 
     // fill in walls
-    /*
     for (i=0; i<subrows*subcols; i++) {
         x = i % subcols;
         y = Math.floor(i/subcols);
@@ -735,19 +787,26 @@ var getTiles = function() {
             setTile(x,y,'|');
         }
     }
-    */
 
-    // TODO: double width of map and reflect the map over the y axis
+    // create the ghost door
+    setTile(2,12,'-');
 
-    return tiles;
+    // return a tile string
+    return tiles.join("");
 };
 
-var drawCells = function(ctx,left,top,size,title) {
+var drawCells = function(ctx,left,top,size,title,
+    drawRaiseHeightCandidate,
+    drawRaiseHeight,
+    drawShrinkWidthCandidate,
+    drawShrinkWidth,
+    drawNumbers) {
+
     ctx.save();
     ctx.translate(left,top);
 
     // draw title
-    ctx.font = "bold " + size/3*2 + "px sans-serif";
+    ctx.font = "bold " + size/3 + "px sans-serif";
     ctx.textBaseline = "bottom";
     ctx.textAlign = "left";
     ctx.fillText(title, 0, -5);
@@ -795,16 +854,11 @@ var drawCells = function(ctx,left,top,size,title) {
     ctx.stroke();
 
     // set cell number font
-    ctx.font = size/2 + "px sans-serif";
-    ctx.textBaseline = "top";
-    ctx.textAlign = "left";
+    ctx.font = size/3 + "px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
 
     var arrowsize = size/6;
-
-    var drawRaiseHeightCandidate = true;
-    var drawShrinkWidthCandidate = true;
-    var drawRaiseHeight = true;
-    var drawShrinkWidth = true;
 
     ctx.lineWidth = "3";
     for (i=0; i<cols*rows; i++) {
@@ -847,9 +901,9 @@ var drawCells = function(ctx,left,top,size,title) {
         }
 
         // draw cell number (order)
-        if (c.no != undefined) {
+        if (drawNumbers && c.no != undefined) {
             ctx.fillStyle = "#000";
-            ctx.fillText(c.no, x*size+2, y*size+2);
+            ctx.fillText(c.no, x*size+size/2, y*size+size/2);
         }
     }
 
@@ -996,6 +1050,8 @@ var drawTiles = function(ctx,left,top,size) {
     var subrows = rows*3+1+3;
     var subcols = cols*3-1+2;
 
+    var fullcols = (subcols-2)*2;
+
     // draw grid
     var i;
     var x,y;
@@ -1003,9 +1059,9 @@ var drawTiles = function(ctx,left,top,size) {
     for (i=0; i<=subrows; i++) {
         y = i*subsize;
         ctx.moveTo(0,y);
-        ctx.lineTo(subcols*subsize,y);
+        ctx.lineTo(fullcols*subsize,y);
     }
-    for (i=0; i<=subcols; i++) {
+    for (i=0; i<=fullcols; i++) {
         x = i*subsize;
         ctx.moveTo(x,0);
         ctx.lineTo(x,subrows*subsize);
@@ -1019,15 +1075,16 @@ var drawTiles = function(ctx,left,top,size) {
     var tiles = getTiles();
 
     fillStyles = {
-        '.' : 'rgba(0,0,0,0.3)',
-        '|' : 'rgba(0,0,0,0.8)',
+        '.' : 'rgba(0,0,0,0.4)',
+        '|' : 'rgba(0,0,0,0.1)',
+        '-' : 'rgba(0,0,0,0.0)',
         '_' : 'rgba(0,0,0,0)',
     };
     var x,y;
     var color;
-    for (i=0; i<subrows*subcols; i++) {
-        x = i % subcols;
-        y = Math.floor(i/subcols);
+    for (i=0; i<subrows*fullcols; i++) {
+        x = i % fullcols;
+        y = Math.floor(i/fullcols);
 
         ctx.fillStyle = fillStyles[tiles[i]];
         ctx.fillRect(x*subsize,y*subsize,subsize,subsize);
