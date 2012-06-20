@@ -28,6 +28,5 @@ shifting/resizing of a few key wall segments (phase 2).
 
 ## Contents
 
-* index.htm currently displays a demo of random simple maps using phase1.js.
+* index.htm currently displays a demo of random simple maps using mapgen.js.
 * drawpresets.htm draws the simplified versions of the original maps.
-* main.py is an initial attempt that doesn't try simplifying first (on hold).
