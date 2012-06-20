@@ -11,8 +11,15 @@ maps found in Pac-Man and Ms. Pac-Man.  When completed, this algorithm will be
 added to the accurate Pac-Man project to increase the playability of the arcade
 classic.
 
-Works in Progress
------------------
+Status
+------
+
+The 'tetris' folder contains an initial working solution:
+
+<img src="https://github.com/shaunew/Pac-Man/raw/gh-pages/mapgen/tetris/working.png" />
+
+History
+-------
 
 - The 'randomfill' folder contains a Python solution that uses a special
   heuristic for progressively placing random valid walls.
