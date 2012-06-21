@@ -1,0 +1,38 @@
+
+<script src="mapgen.js"></script>
+<script src="Map.js"></script>
+
+<canvas id='canvas'></canvas>
+
+<script>
+
+window.onload = function() {
+    var canvas = document.getElementById('canvas');
+
+    var rows = 4;
+    var cols = 4;
+    var w,h;
+    w = 28*8;
+    h = 31*8;
+    canvas.width = w*cols;
+    canvas.height = h*rows;
+
+    var ctx = canvas.getContext('2d');
+
+    var map;
+    var x,y;
+    for (y=0; y<rows; y++) {
+        for (x=0; x<cols; x++) {
+            genRandom();
+            map = new Map(28,31,getTiles());
+            map.draw(ctx,x*w,y*h,true);
+        }
+    }
+
+    //drawResult(ctx,(cols+2)*size,size,size);
+    //drawResult2(ctx,(2*cols+3)*size,size,size);
+    //drawTiles(ctx,(cols+2)*size,size,size);
+
+};
+
+</script>
