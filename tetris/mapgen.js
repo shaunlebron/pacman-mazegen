@@ -564,11 +564,26 @@ var genRandom = function() {
                    !q2[LEFT] && !q2[RIGHT] && q2[UP] && !q2[DOWN];
         };
         var x,y;
+        var g;
         for (y=0; y<rows-1; y++) {
             for (x=0; x<cols-1; x++) {
                 if (isHori(x,y) && isHori(x,y+1) ||
                     isVert(x,y) && isVert(x+1,y)) {
-                    return false;
+
+                    // don't allow them in the middle because they'll be two large when reflected.
+                    if (x==0) {
+                        return false;
+                    }
+
+                    // Join the four cells to create a square.
+                    cells[x+y*cols].connect[DOWN] = true;
+                    g = cells[x+y*cols].group;
+                    cells[x+1+y*cols].connect[DOWN] = true;
+                    cells[x+1+y*cols].group = g;
+                    cells[x+(y+1)*cols].connect[UP] = true;
+                    cells[x+(y+1)*cols].group = g;
+                    cells[x+1+(y+1)*cols].connect[UP] = true;
+                    cells[x+1+(y+1)*cols].group = g;
                 }
             }
         }
