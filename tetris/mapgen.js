@@ -27,6 +27,7 @@ var reset = function() {
             connect: [false, false, false, false],
             next: [],
             no: undefined,
+            group: undefined,
         };
     }
 
@@ -173,53 +174,6 @@ var genPreset = function(name) {
 
 };
 
-var isCellConnection = function(cell,key) {
-    var c = cell.connect;
-    switch (key) {
-        case '.': return !c[UP] && !c[DOWN] && !c[LEFT] && !c[RIGHT];
-        case '>': return !c[UP] && !c[DOWN] && !c[LEFT] &&  c[RIGHT];
-        case '<': return !c[UP] && !c[DOWN] &&  c[LEFT] && !c[RIGHT];
-        case '^': return  c[UP] && !c[DOWN] && !c[LEFT] && !c[RIGHT];
-        case 'v': return !c[UP] &&  c[DOWN] && !c[LEFT] && !c[RIGHT];
-        case 'L': return  c[UP] && !c[DOWN] && !c[LEFT] &&  c[RIGHT];
-        case 'r': return !c[UP] &&  c[DOWN] && !c[LEFT] &&  c[RIGHT];
-        case '7': return !c[UP] &&  c[DOWN] &&  c[LEFT] && !c[RIGHT];
-        case 'J': return  c[UP] && !c[DOWN] &&  c[LEFT] && !c[RIGHT];
-        case '-': return !c[UP] && !c[DOWN] &&  c[LEFT] &&  c[RIGHT];
-        case '|': return  c[UP] &&  c[DOWN] && !c[LEFT] && !c[RIGHT];
-        case 'w': return  c[UP] && !c[DOWN] &&  c[LEFT] &&  c[RIGHT];
-        case '3': return  c[UP] &&  c[DOWN] &&  c[LEFT] && !c[RIGHT];
-        case 'm': return !c[UP] &&  c[DOWN] &&  c[LEFT] &&  c[RIGHT];
-        case 'E': return  c[UP] &&  c[DOWN] && !c[LEFT] &&  c[RIGHT];
-        case '+': return  c[UP] &&  c[DOWN] &&  c[LEFT] &&  c[RIGHT];
-    }
-    return false;
-};
-
-var getCellConnectionKey = function(cell) {
-    var c = cell.connect;
-    var u = c[UP];
-    var d = c[DOWN];
-    var l = c[LEFT];
-    var r = c[RIGHT];
-    if ( !u && !d && !l && !r) return '.';
-    if ( !u && !d && !l &&  r) return '>';
-    if ( !u && !d &&  l && !r) return '<';
-    if (  u && !d && !l && !r) return '^';
-    if ( !u &&  d && !l && !r) return 'v';
-    if (  u && !d && !l &&  r) return 'L';
-    if ( !u &&  d && !l &&  r) return 'r';
-    if ( !u &&  d &&  l && !r) return '7';
-    if (  u && !d &&  l && !r) return 'J';
-    if ( !u && !d &&  l &&  r) return '-';
-    if (  u &&  d && !l && !r) return '|';
-    if (  u && !d &&  l &&  r) return 'w';
-    if (  u &&  d &&  l && !r) return '3';
-    if ( !u &&  d &&  l &&  r) return 'm';
-    if (  u &&  d && !l &&  r) return 'E';
-    if (  u &&  d &&  l &&  r) return '+';
-};
-
 var genRandom = function() {
 
     var getLeftMostEmptyCells = function() {
@@ -250,11 +204,19 @@ var genRandom = function() {
         var dir;
         var size;
         var i,k;
+        var numGroups;
         var numFilled = 0;
         var singleCount = {};
         singleCount[0] = singleCount[rows-1] = 0;
 
-        while (true) {
+        var fillCell = function(cell) {
+            cell.filled = true;
+            cell.no = numFilled++;
+            cell.group = numGroups;
+        };
+
+        for (numGroups=0; ; numGroups++) {
+
             // find all the leftmost empty cells
             openCells = getLeftMostEmptyCells();
 
@@ -266,8 +228,7 @@ var genRandom = function() {
 
             // choose the center cell to be a random open cell, and fill it.
             firstCell = cell = openCells[getRandomInt(0,numOpenCells-1)];
-            cell.filled = true;
-            cell.no = numFilled++;
+            fillCell(cell);
 
             // randomly allow one single-cell piece on the top or bottom of the map.
             if (cell.x < cols-1 && (cell.y in singleCount) && Math.random() <= 0.35) {
@@ -345,8 +306,7 @@ var genRandom = function() {
                     }
 
                     // fill the cell
-                    newCell.filled = true;
-                    newCell.no = numFilled++;
+                    fillCell(newCell);
 
                     // increase the size count of this piece.
                     size++;
@@ -578,14 +538,39 @@ var genRandom = function() {
     // This is a function to detect impurities in the map that have no heuristic implemented to avoid it yet in gen().
     var isDesirable = function() {
 
+        // ensure a solid top right corner
         var c = cells[4];
         if (c.connect[UP] || c.connect[RIGHT]) {
             return false;
         }
 
+        // ensure a solid bottom right corner
         c = cells[rows*cols-1];
         if (c.connect[DOWN] || c.connect[RIGHT]) {
             return false;
+        }
+
+        // ensure there are no two stacked/side-by-side 2-cell pieces.
+        var isHori = function(x,y) {
+            var q1 = cells[x+y*cols].connect;
+            var q2 = cells[x+1+y*cols].connect;
+            return !q1[UP] && !q1[DOWN] && (x==0 ? q1[LEFT] : !q1[LEFT]) && q1[RIGHT] && 
+                   !q2[UP] && !q2[DOWN] && q2[LEFT] && !q2[RIGHT];
+        };
+        var isVert = function(x,y) {
+            var q1 = cells[x+y*cols].connect;
+            var q2 = cells[x+(y+1)*cols].connect;
+            return !q1[LEFT] && !q1[RIGHT] && !q1[UP] && q1[DOWN] && 
+                   !q2[LEFT] && !q2[RIGHT] && q2[UP] && !q2[DOWN];
+        };
+        var x,y;
+        for (y=0; y<rows-1; y++) {
+            for (x=0; x<cols-1; x++) {
+                if (isHori(x,y) && isHori(x,y+1) ||
+                    isVert(x,y) && isVert(x+1,y)) {
+                    return false;
+                }
+            }
         }
 
         if (!chooseTallRows()) {
@@ -622,14 +607,11 @@ var genRandom = function() {
     // in the simplified model because small blocks are only good for
     // keeping the generator rules consistent.
     var eraseTunnels = function() {
-        var c = cells[2*cols-1];
-        var c2;
-        while (c.next[DOWN]) {
-            var c2 = c.next[DOWN];
-            if (c.connect[RIGHT] && c2.connect[RIGHT] && !c.connect[DOWN]) {
-                c.connect[DOWN] = c2.connect[UP] = true;
+        var c;
+        for (c=cells[2*cols-1]; c; c = c.next[DOWN]) {
+            if (c.connect[RIGHT]) {
+                c.group = -1;
             }
-            c = c2;
         }
     };
 
@@ -652,15 +634,18 @@ var genRandom = function() {
     console.log(genCount);
 };
 
+// Transform the simple cells to a tile array used for creating the map.
 var getTiles = function() {
 
-    var tiles = [];
+    var tiles = []; // each is a character indicating a wall(|), path(.), or blank(_).
+    var tileCells = []; // maps each tile to a specific cell of our simple map
     var subrows = rows*3+1+3;
     var subcols = cols*3-1+2;
 
     var midcols = subcols-2;
     var fullcols = (subcols-2)*2;
 
+    // getter and setter for tiles (ensures vertical symmetry axis)
     var setTile = function(x,y,v) {
         if (x<0 || x>subcols-1 || y<0 || y>subrows-1) {
             return;
@@ -669,7 +654,6 @@ var getTiles = function() {
         tiles[midcols+x+y*fullcols] = v;
         tiles[midcols-1-x+y*fullcols] = v;
     };
-
     var getTile = function(x,y) {
         if (x<0 || x>subcols-1 || y<0 || y>subrows-1) {
             return undefined;
@@ -678,68 +662,72 @@ var getTiles = function() {
         return tiles[midcols+x+y*fullcols];
     };
 
-    // initialize cells
+    // getter and setter for tile cells
+    var setTileCell = function(x,y,cell) {
+        if (x<0 || x>subcols-1 || y<0 || y>subrows-1) {
+            return;
+        }
+        x -= 2;
+        tileCells[x+y*subcols] = cell;
+    };
+    var getTileCell = function(x,y) {
+        if (x<0 || x>subcols-1 || y<0 || y>subrows-1) {
+            return undefined;
+        }
+        x -= 2;
+        return tileCells[x+y*subcols];
+    };
+
+    // initialize tiles
     var i;
     for (i=0; i<subrows*fullcols; i++) {
-        tiles.push('_')
+        tiles.push('_');
+    }
+    for (i=0; i<subrows*subcols; i++) {
+        tileCells.push(undefined);
     }
 
-    // set paths
+    // set tile cells
     var c;
     var x,y,w,h;
-    var j;
+    var x0,y0;
     for (i=0; i<rows*cols; i++) {
-
         c = cells[i];
-
-        x = c.final_x;
-        y = c.final_y+1;
-        w = c.final_w;
-        h = c.final_h;
-
-        if (!c.connect[UP]) {
-            for (j=0; j<w; j++) {
-                setTile(x+j,y,'.');
-            }
-        }
-        if (!c.connect[LEFT]) {
-            for (j=0; j<h; j++) {
-                setTile(x,y+j,'.');
-            }
-        }
-
-        if (i % cols == cols-1 && !c.connect[RIGHT]) {
-            for (j=0; j<h; j++) {
-                setTile(x+w,y+j,'.');
-            }
-        }
-
-        if (Math.floor(i/cols) == rows-1 && !c.connect[DOWN]) {
-            for (j=0; j<w; j++) {
-                setTile(x+j,y+h,'.');
+        for (x0=0; x0<c.final_w; x0++) {
+            for (y0=0; y0<c.final_h; y0++) {
+                setTileCell(c.final_x+x0,c.final_y+1+y0,c);
             }
         }
     }
 
-    var pathUp, pathDown, pathLeft, pathRight;
+    // set path tiles
+    var cl, cu;
+    for (y=0; y<subrows; y++) {
+        for (x=0; x<subcols; x++) {
+            c = getTileCell(x,y); // cell
+            cl = getTileCell(x-1,y); // left cell
+            cu = getTileCell(x,y-1); // up cell
 
-    // fill in path corners
-    for (i=0; i<subrows*subcols; i++) {
-        x = i % subcols;
-        y = Math.floor(i/subcols);
+            if (c) {
+                // inside map
+                if (cl && c.group != cl.group || // at vertical boundary
+                    cu && c.group != cu.group || // at horizontal boundary
+                    !cu && !c.connect[UP]) { // at top boundary
+                    setTile(x,y,'.');
+                }
+            }
+            else {
+                // outside map
+                if (cl && (!cl.connect[RIGHT] || getTile(x-1,y) == '.') || // at right boundary
+                    cu && (!cu.connect[DOWN] || getTile(x,y-1) == '.')) { // at bottom boundary
+                    setTile(x,y,'.');
+                }
+            }
 
-        if (getTile(x,y) == '.') {
-            continue;
-        }
-
-        pathUp = getTile(x,y-1) == '.' && getTile(x,y-2) == '.';
-        pathDown = getTile(x,y+1) == '.' && getTile(x,y+2) == '.';
-        pathRight = getTile(x+1,y) == '.' && getTile(x+2,y) == '.';
-        pathLeft = getTile(x-1,y) == '.' && getTile(x-2,y) == '.';
-
-        if ( (pathUp && pathLeft) || (pathUp && pathRight) ||
-             (pathDown && pathLeft) || (pathDown && pathRight)) {
-            setTile(x,y,'.');
+            // at corner connecting two paths
+            if (getTile(x-1,y) == '.' && getTile(x,y-1) == '.' && getTile(x-1,y-1) == '_') {
+                setTile(x,y,'.');
+            }
         }
     }
 
@@ -747,6 +735,8 @@ var getTiles = function() {
     var x;
     var minx = subcols;
     var tunnely;
+    
+    // TODO: make a nontrivial tunnel selection algorithm
 
     // start from center and move down
     for (y=Math.floor(subrows/2); y<subrows; y++) {
@@ -774,17 +764,13 @@ var getTiles = function() {
     }
 
     // fill in walls
-    for (i=0; i<subrows*subcols; i++) {
-        x = i % subcols;
-        y = Math.floor(i/subcols);
-
-        if (getTile(x,y) == '.') {
-            continue;
-        }
-
-        if (getTile(x-1,y) == '.' || getTile(x,y-1) == '.' || getTile(x+1,y) == '.' || getTile(x,y+1) == '.' ||
-            getTile(x-1,y-1) == '.' || getTile(x+1,y-1) == '.' || getTile(x+1,y+1) == '.' || getTile(x-1,y+1) == '.') {
-            setTile(x,y,'|');
+    for (y=0; y<subrows; y++) {
+        for (x=0; x<subcols; x++) {
+            // any blank tile that shares a vertex with a path tile should be a wall tile
+            if (getTile(x,y) != '.' && (getTile(x-1,y) == '.' || getTile(x,y-1) == '.' || getTile(x+1,y) == '.' || getTile(x,y+1) == '.' ||
+                getTile(x-1,y-1) == '.' || getTile(x+1,y-1) == '.' || getTile(x+1,y+1) == '.' || getTile(x-1,y+1) == '.')) {
+                setTile(x,y,'|');
+            }
         }
     }
 
