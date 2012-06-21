@@ -426,6 +426,11 @@ var genRandom = function() {
         }
     };
 
+    // Identify if a cell is the center of a cross.
+    var cellIsCrossCenter = function(c) {
+        return c.connect[UP] && c.connect[RIGHT] && c.connect[DOWN] && c.connect[LEFT];
+    };
+
     var chooseNarrowCols = function() {
 
         var canShrinkWidth = function(x,y) {
@@ -441,12 +446,13 @@ var genRandom = function() {
             for (x0=x; x0<cols; x0++) {
                 c = cells[x0+y*cols];
                 c2 = c.next[DOWN]
-                if (!c.connect[RIGHT] && !c2.connect[RIGHT]) {
+                if ((!c.connect[RIGHT] || cellIsCrossCenter(c)) &&
+                    (!c2.connect[RIGHT] || cellIsCrossCenter(c2))) {
                     break;
                 }
             }
 
-            while (c2) {
+            for (; c2; c2=c2.next[LEFT]) {
 
                 if (c2.isShrinkWidthCandidate && canShrinkWidth(c2.x,c2.y)) {
                     c2.shrinkWidth = true;
@@ -455,11 +461,10 @@ var genRandom = function() {
                 }
 
                 // cannot proceed further without causing irreconcilable tight turns
-                if (!c2.connect[LEFT] && !c2.next[UP].connect[LEFT]) {
+                if ((!c2.connect[LEFT] || cellIsCrossCenter(c2)) &&
+                    (!c2.next[UP].connect[LEFT] || cellIsCrossCenter(c2.next[UP]))) {
                     break;
                 }
-
-                c2 = c2.next[LEFT];
             }
 
             return false;
@@ -495,13 +500,14 @@ var genRandom = function() {
             for (y0=y; y0>=0; y0--) {
                 c = cells[x+y0*cols];
                 c2 = c.next[RIGHT]
-                if (!c.connect[UP] && !c2.connect[UP]) {
+                if ((!c.connect[UP] || cellIsCrossCenter(c)) && 
+                    (!c2.connect[UP] || cellIsCrossCenter(c2))) {
                     break;
                 }
             }
 
             // Proceed from the right cell upwards, looking for a cell that can be raised.
-            while (c2) {
+            for (; c2; c2=c2.next[DOWN]) {
 
                 if (c2.isRaiseHeightCandidate && canRaiseHeight(c2.x,c2.y)) {
                     c2.raiseHeight = true;
@@ -510,10 +516,10 @@ var genRandom = function() {
                 }
 
                 // cannot proceed further without causing irreconcilable tight turns
-                if (!c2.connect[DOWN] && !c2.next[LEFT].connect[DOWN]) {
+                if ((!c2.connect[DOWN] || cellIsCrossCenter(c2)) &&
+                    (!c2.next[LEFT].connect[DOWN] || cellIsCrossCenter(c2.next[LEFT]))) {
                     break;
                 }
-                c2 = c2.next[DOWN];
             }
 
             return false;
