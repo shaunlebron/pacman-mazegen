@@ -193,6 +193,50 @@ var genRandom = function() {
         }
         return leftCells;
     };
+    var isOpenCell = function(cell,prevDir,size,i) {
+
+        // prevent wall from going through starting position
+        if (cell.y == 6 && cell.x == 0 && i == DOWN ||
+            cell.y == 7 && cell.x == 0 && i == UP) {
+            return false;
+        }
+
+        // prevent long straight pieces of length 3
+        if (size == 2 && (i==prevDir || (i+2)%4==prevDir)) {
+            return false;
+        }
+
+        // examine an adjacent empty cell
+        if (cell.next[i] && !cell.next[i].filled) {
+            
+            // only open if the cell to the left of it is filled
+            if (cell.next[i].next[LEFT] && !cell.next[i].next[LEFT].filled) {
+            }
+            else {
+                return true;
+            }
+        }
+
+        return false;
+    };
+    var getOpenCells = function(cell,prevDir,size) {
+        var openCells = [];
+        var numOpenCells = 0;
+        for (i=0; i<4; i++) {
+            if (isOpenCell(cell,prevDir,size,i)) {
+                openCells.push(i);
+                numOpenCells++;
+            }
+        }
+        return { openCells: openCells, numOpenCells: numOpenCells };
+    };
+    var connectCell = function(cell,dir) {
+        cell.connect[dir] = true;
+        cell.next[dir].connect[(dir+2)%4] = true;
+        if (cell.x == 0 && dir == RIGHT) {
+            cell.connect[LEFT] = true;
+        }
+    };
 
     var gen = function() {
     
@@ -208,6 +252,8 @@ var genRandom = function() {
         var numFilled = 0;
         var singleCount = {};
         singleCount[0] = singleCount[rows-1] = 0;
+        var longPieces = 0;
+        var maxLongPieces = 1;
 
         var fillCell = function(cell) {
             cell.filled = true;
@@ -244,47 +290,18 @@ var genRandom = function() {
             while (size < 5) {
 
                 // find available open adjacent cells.
-                for (k=0; k<2; k++) {
+                var result = getOpenCells(cell,dir,size);
+                openCells = result['openCells'];
+                numOpenCells = result['numOpenCells'];
 
-                    // clear list of open cells.
-                    openCells = [];
-                    numOpenCells = 0;
-
-                    for (i=0; i<4; i++) {
-                        
-                        // prevent wall from going through starting position
-                        if (cell.y == 6 && cell.x == 0 && i == DOWN ||
-                            cell.y == 7 && cell.x == 0 && i == UP) {
-                            continue;
-                        }
-
-                        // prevent long straight pieces of length 3
-                        if (size == 2 && (i==dir || (i+2)%4==dir)) {
-                            continue;
-                        }
-
-                        // examine an adjacent empty cell
-                        if (cell.next[i] && !cell.next[i].filled) {
-                            
-                            // only open if the cell to the left of it is filled
-                            if (cell.next[i].next[LEFT] && !cell.next[i].next[LEFT].filled) {
-                            }
-                            else {
-                                // found an open cell
-                                openCells.push(i);
-                                numOpenCells++;
-                            }
-                        }
-                    }
-
-                    // if no open cells found from center point, then use the last cell as the new center
-                    // but only do this if we are of length 2 to prevent numerous short pieces.
-                    // then recalculate the open adjacent cells.
-                    if (numOpenCells == 0 && size == 2) {
-                        cell = newCell;
-                        continue;
-                    }
-                    break;
+                // if no open cells found from center point, then use the last cell as the new center
+                // but only do this if we are of length 2 to prevent numerous short pieces.
+                // then recalculate the open adjacent cells.
+                if (numOpenCells == 0 && size == 2) {
+                    cell = newCell;
+                    result = getOpenCells(cell,dir,size);
+                    openCells = result['openCells'];
+                    numOpenCells = result['numOpenCells'];
                 }
 
                 var stop = false;
@@ -299,11 +316,7 @@ var genRandom = function() {
                     newCell = cell.next[dir];
 
                     // connect the cell to the new cell.
-                    cell.connect[dir] = true;
-                    newCell.connect[(dir+2)%4] = true;
-                    if (cell.x == 0 && dir == RIGHT) {
-                        cell.connect[LEFT] = true;
-                    }
+                    connectCell(cell,dir);
 
                     // fill the cell
                     fillCell(newCell);
@@ -342,19 +355,27 @@ var genRandom = function() {
                                 c = c.next[UP];
                             }
                             c.connect[RIGHT] = c.next[DOWN].connect[RIGHT] = true;
-
-                            // if there is a vertical 2-cell piece to the left of this, then
-                            // join it to form a square.
-                            /*
-                            var c1 = c.next[LEFT];
-                            var c2 = c1.next[DOWN];
-                            if (!c1.connect[UP] && !c1.connect[LEFT] && c1.connect[DOWN] &&
-                                !c2.connect[DOWN] && !c2.connect[LEFT] && c2.connect[UP]) {
-                                c1.connect[RIGHT] = c2.connect[RIGHT] = true;
-                            }
-                            */
                         }
-
+                    }
+                    else if (size == 3 || size == 4) {
+                        // create L piece
+                        if (longPieces < maxLongPieces && firstCell.x > 0 && Math.random() <= 0.5) {
+                            for (i=0; i<4; i++) {
+                                if (!cell.connect[i]) {
+                                    continue;
+                                }
+                                c = cell.next[i];
+                                if (i == LEFT && c.x == 1) { // don't allow growth toward center to cause large reflected piece
+                                    continue;
+                                }
+                                if (isOpenCell(c,dir,size,i)) {
+                                    connectCell(c,i);
+                                    fillCell(c.next[i]);
+                                    longPieces++;
+                                    break;
+                                }
+                            }
+                        }
                     }
 
                     break;
@@ -560,14 +581,14 @@ var genRandom = function() {
         var isHori = function(x,y) {
             var q1 = cells[x+y*cols].connect;
             var q2 = cells[x+1+y*cols].connect;
-            return !q1[UP] && !q1[DOWN] && (x==0 ? q1[LEFT] : !q1[LEFT]) && q1[RIGHT] && 
+            return !q1[UP] && !q1[DOWN] && (x==0 || !q1[LEFT]) && q1[RIGHT] && 
                    !q2[UP] && !q2[DOWN] && q2[LEFT] && !q2[RIGHT];
         };
         var isVert = function(x,y) {
             var q1 = cells[x+y*cols].connect;
             var q2 = cells[x+(y+1)*cols].connect;
-            return !q1[LEFT] && !q1[RIGHT] && !q1[UP] && q1[DOWN] && 
-                   !q2[LEFT] && !q2[RIGHT] && q2[UP] && !q2[DOWN];
+            return !q1[LEFT] && (x==cols-1 || !q1[RIGHT]) && !q1[UP] && q1[DOWN] && 
+                   !q2[LEFT] && (x==cols-1 || !q2[RIGHT]) && q2[UP] && !q2[DOWN];
         };
         var x,y;
         var g;
@@ -583,12 +604,19 @@ var genRandom = function() {
 
                     // Join the four cells to create a square.
                     cells[x+y*cols].connect[DOWN] = true;
+                    cells[x+y*cols].connect[RIGHT] = true;
                     g = cells[x+y*cols].group;
+
                     cells[x+1+y*cols].connect[DOWN] = true;
+                    cells[x+1+y*cols].connect[LEFT] = true;
                     cells[x+1+y*cols].group = g;
+
                     cells[x+(y+1)*cols].connect[UP] = true;
+                    cells[x+(y+1)*cols].connect[RIGHT] = true;
                     cells[x+(y+1)*cols].group = g;
+
                     cells[x+1+(y+1)*cols].connect[UP] = true;
+                    cells[x+1+(y+1)*cols].connect[LEFT] = true;
                     cells[x+1+(y+1)*cols].group = g;
                 }
             }
