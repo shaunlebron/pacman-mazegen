@@ -1,5 +1,6 @@
 
-<script src="mapgen.js"></script>
+<script src="colors.js"></script>
+<script src="mapgen2.js"></script>
 <script src="Map.js"></script>
 
 <canvas id='canvas'></canvas>
@@ -20,12 +21,12 @@ window.onload = function() {
     drawCells(ctx,(cols+2)*size,size,size,"Height Adjustments",true,true,false,false);
     drawCells(ctx,(2*cols+3)*size,size,size,"Width Adjustments",false,false,true,true);
 
-    var map = new Map(28,31,getTiles());
-    map.wallStrokeColor = "#47b897"; // from Pac-Man Plus (easier to see)
-    //mapPacman.wallStrokeColor = "#2121ff"; // from original
-    map.wallFillColor = "#000";
+    var map = new Map(28,36,getTiles());
+    map.name = "Random Map";
+    map.wallFillColor = randomColor();
+    map.wallStrokeColor = rgbString(hslToRgb(Math.random(), Math.random(), Math.random() * 0.4 + 0.6));
     map.pelletColor = "#ffb8ae";
-    map.draw(ctx,(3*cols+4)*size,size,true);
+    map.draw(ctx,(3*cols+4)*size,size,false);
 
     //drawResult(ctx,(cols+2)*size,size,size);
     //drawResult2(ctx,(2*cols+3)*size,size,size);

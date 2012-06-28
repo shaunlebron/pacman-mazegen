@@ -288,20 +288,31 @@ Map.prototype.draw = function(ctx,left,top,print) {
     }
 
     // draw pellets for each path tile
-    ctx.fillStyle=print?"#bbb":this.pelletColor;
     var pelletSize = print?tileSize:2;
+    var energizerSize = 3;
     for (y=0; y<this.numRows; y++) {
         for (x=0; x<this.numCols; x++) {
-            if (this.isFloorTile(x,y)) {
+            if (this.getTile(x,y) == '.') {
+                ctx.fillStyle=print?"#bbb":this.pelletColor;
                 ctx.fillRect(
                     x*tileSize+tileSize/2-pelletSize/2,
                     y*tileSize+tileSize/2-pelletSize/2,
                     pelletSize,pelletSize);
             }
+            else if (this.getTile(x,y) == 'o') {
+                ctx.beginPath();
+                ctx.arc(
+                    x*tileSize+tileSize/2,
+                    y*tileSize+tileSize/2,
+                    energizerSize,0,Math.PI*2);
+                ctx.fillStyle="#FFF";
+                ctx.fill();
+            }
         }
     }
 
     // draw grid
+    /*
     ctx.strokeStyle=print?"rgba(0,0,0,0.3)":"rgba(255,255,255,0.3)";
     ctx.beginPath();
     for (y=0; y<=this.numRows; y++) {
@@ -313,6 +324,7 @@ Map.prototype.draw = function(ctx,left,top,print) {
         ctx.lineTo(x*tileSize,this.heightPixels);
     }
     ctx.stroke();
+    */
 
     // draw title
     if (this.name) {
