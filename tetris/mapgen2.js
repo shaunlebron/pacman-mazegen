@@ -602,6 +602,7 @@ var genRandom = function() {
 
     var createTunnels = function() {
 
+        // declare candidates
         var singleDeadEndCells = [];
         var topSingleDeadEndCells = [];
         var botSingleDeadEndCells = [];
@@ -616,16 +617,23 @@ var genRandom = function() {
 
         var doubleDeadEndCells = [];
 
-        var numTunnelsDesired = Math.random() <= 0.45 ? 2 : 1;
-
+        // prepare candidates
         var y;
         var c;
         var upDead;
         var downDead;
         for (y=0; y<rows; y++) {
             c = cells[cols-1+y*cols];
-            if (c.connect[UP] || c.connect[DOWN]) {
+            if (c.connect[UP]) {
                 continue;
+            }
+            c.isEdgeTunnelCandidate = true;
+            edgeTunnelCells.push(c);
+            if (c.y <= 2) {
+                topEdgeTunnelCells.push(c);
+            }
+            else if (c.y >= 5) {
+                botEdgeTunnelCells.push(c);
             }
             upDead = (!c.next[UP] || c.next[UP].connect[RIGHT]);
             downDead = (!c.next[DOWN] || c.next[DOWN].connect[RIGHT]);
@@ -642,6 +650,9 @@ var genRandom = function() {
                 }
             }
             else {
+                if (c.connect[DOWN]) {
+                    continue;
+                }
                 if (upDead != downDead) {
                     if (y < rows-1) {
                         singleDeadEndCells.push(c);
@@ -666,7 +677,14 @@ var genRandom = function() {
             }
         }
 
-        // TODO: choose tunnels (c.topTunnel and/or c.botTunnel)
+        // TODO: choose tunnels from candidates
+        var numTunnelsDesired = Math.random() <= 0.45 ? 2 : 1;
+        if (numTunnelsDesired == 1) {
+        }
+        else if (numTunnelsDesired == 2) {
+        }
+
+        // TODO: clear unused void tunnels (dead ends)
     };
 
     var joinWalls = function() {
@@ -1035,8 +1053,11 @@ var drawCells = function(ctx,left,top,size,title,options) {
         }
 
         if (options.drawVoidTunnel && c.isVoidTunnelCandidate) {
-            //ctx.fillStyle = "rgba(0,0,0,0.2)";
-            //ctx.fillRect(x*size,y*size,size,size);
+            ctx.fillStyle = "rgba(0,0,0,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawEdgeTunnel && c.isEdgeTunnelCandidate) {
             ctx.beginPath();
             ctx.save();
             ctx.translate(x*size+size/2,y*size+5);
@@ -1105,6 +1126,7 @@ var drawCells = function(ctx,left,top,size,title,options) {
         }
     }
     ctx.lineWidth = "3";
+    ctx.lineCap = 'round';
     ctx.strokeStyle = "rgba(0,0,0,0.9)";
     ctx.stroke();
 

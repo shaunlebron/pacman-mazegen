@@ -8,7 +8,7 @@
 <script>
 
 window.onload = function() {
-    var size = 50;
+    var size = 40;
 
     var canvas = document.getElementById('canvas');
     canvas.width = 1280;
@@ -31,7 +31,12 @@ window.onload = function() {
 
     x += (cols+1)*size;
     drawCells(ctx,x,y,size,"Cell Join Candidates",
-        {'drawJoinCandidate':true,'drawSingleDeadEnd':true,'drawDoubleDeadEnd':true,'drawVoidTunnel':true});
+        {'drawJoinCandidate':true,
+            'drawSingleDeadEnd':true,
+            'drawDoubleDeadEnd':true,
+            'drawVoidTunnel':true,
+            'drawEdgeTunnel':true,
+        });
 
     /*
     var map = new Map(28,36,getTiles());
