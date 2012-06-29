@@ -1,5 +1,6 @@
 
 <script src="mapgen.js"></script>
+<script src="colors.js"></script>
 <script src="Map.js"></script>
 
 <canvas id='canvas'></canvas>
@@ -13,7 +14,7 @@ window.onload = function() {
     var cols = 4;
     var w,h;
     w = 28*8;
-    h = 31*8;
+    h = 36*8;
     canvas.width = w*cols;
     canvas.height = h*rows;
 
@@ -23,9 +24,8 @@ window.onload = function() {
     var x,y;
     for (y=0; y<rows; y++) {
         for (x=0; x<cols; x++) {
-            genRandom();
-            map = new Map(28,31,getTiles());
-            map.draw(ctx,x*w,y*h,true);
+            map = mapgen();
+            map.draw(ctx,x*w,y*h);
         }
     }
 

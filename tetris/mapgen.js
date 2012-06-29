@@ -2,6 +2,25 @@ var getRandomInt = function(min,max) {
     return Math.floor(Math.random() * (max-min+1)) + min;
 };
 
+var shuffle = function(list) {
+    var len = list.length;
+    var i,j;
+    var temp;
+    for (i=0; i<len; i++) {
+        j = getRandomInt(0,len-1);
+        temp = list[i];
+        list[i] = list[j];
+        list[j] = temp;
+    }
+};
+
+var randomElement = function(list) {
+    var len = list.length;
+    if (len > 0) {
+        return list[getRandomInt(0,len-1)];
+    }
+};
+
 var UP = 0;
 var RIGHT = 1;
 var DOWN = 2;
@@ -65,113 +84,6 @@ var reset = function() {
     c = cells[i];
     c.filled=true;
     c.connect[UP] = c.connect[LEFT] = true;
-};
-
-var presets = {
-    'pacman': {
-        map:
-            '^><><' +
-            'm<v><' +
-            '^>3rm' +
-            'm7^Lw' +
-            'wJvrm' +
-            'm<^Lw' +
-            '^><r<' +
-            'm<v^>' +
-            '^>w-<',
-        tallRows: [0,0,0,0,0],
-        narrowCols: [4,4,4,4,4,4,4,4,4],
-    },
-    'mspacman1': {
-        map:
-            '-<^><' +
-            'v><v>' +
-            'w<>Jr' +
-            'm7>7E' +
-            'wJv^L' +
-            'v>w<r' +
-            'w<><L' +
-            'v>7r7' +
-            'w<^LJ',
-        tallRows: [1,1,1,1,1],
-        narrowCols: [4,4,4,4,4,4,4,4,4],
-    },
-    'mspacman2': {
-        map:
-            'm<^>-' +
-            '^v>-7' +
-            '-Jr<^' +
-            'm7^>-' +
-            'wJvr<' +
-            'v>J^r' +
-            '^>m<L' +
-            'm<^v>' +
-            '^><L<',
-        tallRows: [1,1,4,5,5],
-        narrowCols: [4,3,3,4,4,4,4,4,4],
-    },
-    'mspacman3': {
-        map:
-            'v^>-7' +
-            '^><v^' +
-            '-<>Jv' +
-            'm7v>J' +
-            'wJL<v' +
-            'v>7>J' +
-            'w<^v>' +
-            'v>7L<' +
-            'w<|><',
-        tallRows: [1,1,1,1,1],
-        narrowCols: [3,2,2,3,3,3,4,4,4],
-    },
-    'mspacman4': {
-        map:
-            '-7><v' +
-            'v^v>J' +
-            '^>+<r' +
-            'm7^vL' +
-            'wJvE<' +
-            'v>J^r' +
-            '^v><L' +
-            '-Jv>7' +
-            'v>w<^',
-        tallRows: [1,1,0,0,0],
-        narrowCols: [3,3,4,4,4,4,4,3,3],
-    },
-};
-
-var genPreset = function(name) {
-    reset();
-    var p = presets[name];
-    var i,c;
-    for (i=0; i<rows*cols; i++) {
-        c = cells[i].connect;
-        switch (p.map[i]) {
-            case '>': c[RIGHT] = true; break;
-            case '<': c[LEFT] = true; break;
-            case '^': c[UP] = true; break;
-            case 'v': c[DOWN] = true; break;
-            case 'L': c[UP] = c[RIGHT] = true; break;
-            case 'r': c[DOWN] = c[RIGHT] = true; break;
-            case '7': c[DOWN] = c[LEFT] = true; break;
-            case 'J': c[LEFT] = c[UP] = true; break;
-            case '-': c[LEFT] = c[RIGHT] = true; break;
-            case '|': c[UP] = c[DOWN] = true; break;
-            case 'w': c[UP] = c[LEFT] = c[RIGHT] = true; break;
-            case '3': c[UP] = c[LEFT] = c[DOWN] = true; break;
-            case 'm': c[LEFT] = c[DOWN] = c[RIGHT] = true; break;
-            case 'E': c[DOWN] = c[RIGHT] = c[UP] = true; break;
-            case '+': c[DOWN] = c[RIGHT] = c[UP] = c[LEFT] = true; break;
-        }
-    }
-
-    for (i=0; i<cols; i++) {
-        cells[cols*p.tallRows[i]+i].raiseHeight = true;
-    }
-    for (i=0; i<rows; i++) {
-        cells[i*cols+p.narrowCols[i]].shrinkWidth = true;
-    }
-
 };
 
 var genRandom = function() {
@@ -285,100 +197,105 @@ var genRandom = function() {
                 }
             }
 
-            // only allow the piece to grow to 5 cells at most.
+            // number of cells in this contiguous group
             size = 1;
-            while (size < 5) {
 
-                // find available open adjacent cells.
-                var result = getOpenCells(cell,dir,size);
-                openCells = result['openCells'];
-                numOpenCells = result['numOpenCells'];
+            if (cell.x == cols-1) {
+                // if the first cell is at the right edge, then don't grow it.
+                cell.connect[RIGHT] = true;
+                cell.isRaiseHeightCandidate = true;
+            }
+            else {
+                // only allow the piece to grow to 5 cells at most.
+                while (size < 5) {
 
-                // if no open cells found from center point, then use the last cell as the new center
-                // but only do this if we are of length 2 to prevent numerous short pieces.
-                // then recalculate the open adjacent cells.
-                if (numOpenCells == 0 && size == 2) {
-                    cell = newCell;
-                    result = getOpenCells(cell,dir,size);
+                    // find available open adjacent cells.
+                    var result = getOpenCells(cell,dir,size);
                     openCells = result['openCells'];
                     numOpenCells = result['numOpenCells'];
-                }
 
-                var stop = false;
+                    // if no open cells found from center point, then use the last cell as the new center
+                    // but only do this if we are of length 2 to prevent numerous short pieces.
+                    // then recalculate the open adjacent cells.
+                    if (numOpenCells == 0 && size == 2) {
+                        cell = newCell;
+                        result = getOpenCells(cell,dir,size);
+                        openCells = result['openCells'];
+                        numOpenCells = result['numOpenCells'];
+                    }
 
-                // no more adjacent cells, so stop growing this piece.
-                if (numOpenCells == 0) {
-                    stop = true;
-                }
-                else {
-                    // choose a random valid direction to grow.
-                    dir = openCells[getRandomInt(0,numOpenCells-1)];
-                    newCell = cell.next[dir];
+                    var stop = false;
 
-                    // connect the cell to the new cell.
-                    connectCell(cell,dir);
-
-                    // fill the cell
-                    fillCell(newCell);
-
-                    // increase the size count of this piece.
-                    size++;
-
-                    // don't let center pieces grow past 3 cells
-                    if (firstCell.x == 0 && size == 3) {
+                    // no more adjacent cells, so stop growing this piece.
+                    if (numOpenCells == 0) {
                         stop = true;
                     }
+                    else {
+                        // choose a random valid direction to grow.
+                        dir = openCells[getRandomInt(0,numOpenCells-1)];
+                        newCell = cell.next[dir];
 
-                    // Use a probability to determine when to stop growing the piece.
-                    if (Math.random() <= [0.10, 0.5, 0.75, 0][size-2]) {
-                        stop = true;
-                    }
-                }
+                        // connect the cell to the new cell.
+                        connectCell(cell,dir);
 
-                // Close the piece.
-                if (stop) {
+                        // fill the cell
+                        fillCell(newCell);
 
-                    if (size == 1) {
-                        // This is provably a single cell piece on the right edge of the map.
-                        // It must be attached to the outer wall.
-                        cell.connect[RIGHT] = true;
-                        cell.isRaiseHeightCandidate = true;
-                    }
-                    else if (size == 2) {
+                        // increase the size count of this piece.
+                        size++;
 
-                        // With a vertical 2-cell piece, attach to the right wall if adjacent.
-                        var c = firstCell;
-                        if (c.x == cols-1) {
-
-                            // select the top cell
-                            if (c.connect[UP]) {
-                                c = c.next[UP];
-                            }
-                            c.connect[RIGHT] = c.next[DOWN].connect[RIGHT] = true;
+                        // don't let center pieces grow past 3 cells
+                        if (firstCell.x == 0 && size == 3) {
+                            stop = true;
                         }
-                    }
-                    else if (size == 3 || size == 4) {
-                        // create L piece
-                        if (longPieces < maxLongPieces && firstCell.x > 0 && Math.random() <= 0.5) {
-                            for (i=0; i<4; i++) {
-                                if (!cell.connect[i]) {
-                                    continue;
-                                }
-                                c = cell.next[i];
-                                if (i == LEFT && c.x == 1) { // don't allow growth toward center to cause large reflected piece
-                                    continue;
-                                }
-                                if (isOpenCell(c,dir,size,i)) {
-                                    connectCell(c,i);
-                                    fillCell(c.next[i]);
-                                    longPieces++;
-                                    break;
-                                }
-                            }
+
+                        // Use a probability to determine when to stop growing the piece.
+                        if (Math.random() <= [0.10, 0.5, 0.75, 0][size-2]) {
+                            stop = true;
                         }
                     }
 
-                    break;
+                    // Close the piece.
+                    if (stop) {
+
+                        if (size == 1) {
+                            // This is provably impossible because this loop is never entered with size==1.
+                        }
+                        else if (size == 2) {
+
+                            // With a vertical 2-cell piece, attach to the right wall if adjacent.
+                            var c = firstCell;
+                            if (c.x == cols-1) {
+
+                                // select the top cell
+                                if (c.connect[UP]) {
+                                    c = c.next[UP];
+                                }
+                                c.connect[RIGHT] = c.next[DOWN].connect[RIGHT] = true;
+                            }
+                        }
+                        else if (size == 3 || size == 4) {
+                            if (longPieces < maxLongPieces && firstCell.x > 0 && Math.random() <= 0.5) {
+                                for (i=0; i<4; i++) {
+                                    if (!cell.connect[i]) {
+                                        continue;
+                                    }
+                                    c = cell.next[i];
+                                    if (i == LEFT && c.x == 1) { // don't allow growth toward center to cause large reflected piece
+                                        continue;
+                                    }
+                                    if (isOpenCell(c,dir,size,i)) {
+                                        connectCell(c,i);
+                                        fillCell(c.next[i]);
+                                        longPieces++;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        break;
+                    }
                 }
             }
         }
@@ -473,18 +390,30 @@ var genRandom = function() {
                 }
             }
 
+            // build candidate list
+            var candidates = [];
+            var numCandidates = 0;
             for (; c2; c2=c2.next[LEFT]) {
-
-                if (c2.isShrinkWidthCandidate && canShrinkWidth(c2.x,c2.y)) {
-                    c2.shrinkWidth = true;
-                    narrowCols[c2.y] = c2.x;
-                    return true;
+                if (c2.isShrinkWidthCandidate) {
+                    candidates.push(c2);
+                    numCandidates++;
                 }
 
                 // cannot proceed further without causing irreconcilable tight turns
                 if ((!c2.connect[LEFT] || cellIsCrossCenter(c2)) &&
                     (!c2.next[UP].connect[LEFT] || cellIsCrossCenter(c2.next[UP]))) {
                     break;
+                }
+            }
+            shuffle(candidates);
+
+            var i;
+            for (i=0; i<numCandidates; i++) {
+                c2 = candidates[i];
+                if (canShrinkWidth(c2.x,c2.y)) {
+                    c2.shrinkWidth = true;
+                    narrowCols[c2.y] = c2.x;
+                    return true;
                 }
             }
 
@@ -528,18 +457,29 @@ var genRandom = function() {
             }
 
             // Proceed from the right cell upwards, looking for a cell that can be raised.
+            var candidates = [];
+            var numCandidates = 0;
             for (; c2; c2=c2.next[DOWN]) {
-
-                if (c2.isRaiseHeightCandidate && canRaiseHeight(c2.x,c2.y)) {
-                    c2.raiseHeight = true;
-                    tallRows[c2.x] = c2.y;
-                    return true;
+                if (c2.isRaiseHeightCandidate) {
+                    candidates.push(c2);
+                    numCandidates++;
                 }
 
                 // cannot proceed further without causing irreconcilable tight turns
                 if ((!c2.connect[DOWN] || cellIsCrossCenter(c2)) &&
                     (!c2.next[LEFT].connect[DOWN] || cellIsCrossCenter(c2.next[LEFT]))) {
                     break;
+                }
+            }
+            shuffle(candidates);
+
+            var i;
+            for (i=0; i<numCandidates; i++) {
+                c2 = candidates[i];
+                if (canRaiseHeight(c2.x,c2.y)) {
+                    c2.raiseHeight = true;
+                    tallRows[c2.x] = c2.y;
+                    return true;
                 }
             }
 
@@ -587,8 +527,13 @@ var genRandom = function() {
         var isVert = function(x,y) {
             var q1 = cells[x+y*cols].connect;
             var q2 = cells[x+(y+1)*cols].connect;
-            return !q1[LEFT] && (x==cols-1 || !q1[RIGHT]) && !q1[UP] && q1[DOWN] && 
-                   !q2[LEFT] && (x==cols-1 || !q2[RIGHT]) && q2[UP] && !q2[DOWN];
+            if (x==cols-1) {
+                // special case (we can consider two single cells as vertical at the right edge)
+                return !q1[LEFT] && !q1[UP] && !q1[DOWN] &&
+                       !q2[LEFT] && !q2[UP] && !q2[DOWN];
+            }
+            return !q1[LEFT] && !q1[RIGHT] && !q1[UP] && q1[DOWN] && 
+                   !q2[LEFT] && !q2[RIGHT] && q2[UP] && !q2[DOWN];
         };
         var x,y;
         var g;
@@ -651,15 +596,179 @@ var genRandom = function() {
         }
     };
 
-    // get rid of the tunnel paths.
-    // We will create these in post process.  They only emerge here
-    // in the simplified model because small blocks are only good for
-    // keeping the generator rules consistent.
-    var eraseTunnels = function() {
+    var reassignGroup = function(oldg,newg) {
+        var i;
         var c;
-        for (c=cells[2*cols-1]; c; c = c.next[DOWN]) {
+        for (i=0; i<rows*cols; i++) {
+            c = cells[i];
+            if (c.group == oldg) {
+                c.group = newg;
+            }
+        }
+    };
+
+    var createTunnels = function() {
+
+        // declare candidates
+        var singleDeadEndCells = [];
+        var topSingleDeadEndCells = [];
+        var botSingleDeadEndCells = [];
+
+        var voidTunnelCells = [];
+        var topVoidTunnelCells = [];
+        var botVoidTunnelCells = [];
+
+        var edgeTunnelCells = [];
+        var topEdgeTunnelCells = [];
+        var botEdgeTunnelCells = [];
+
+        var doubleDeadEndCells = [];
+
+        // prepare candidates
+        var y;
+        var c;
+        var upDead;
+        var downDead;
+        for (y=0; y<rows; y++) {
+            c = cells[cols-1+y*cols];
+            if (c.connect[UP]) {
+                continue;
+            }
+            if (c.y > 1 && c.y < rows-2) {
+                c.isEdgeTunnelCandidate = true;
+                edgeTunnelCells.push(c);
+                if (c.y <= 2) {
+                    topEdgeTunnelCells.push(c);
+                }
+                else if (c.y >= 5) {
+                    botEdgeTunnelCells.push(c);
+                }
+            }
+            upDead = (!c.next[UP] || c.next[UP].connect[RIGHT]);
+            downDead = (!c.next[DOWN] || c.next[DOWN].connect[RIGHT]);
             if (c.connect[RIGHT]) {
-                c.group = -1;
+                if (upDead) {
+                    c.isVoidTunnelCandidate = true;
+                    voidTunnelCells.push(c);
+                    if (c.y <= 2) {
+                        topVoidTunnelCells.push(c);
+                    }
+                    else if (c.y >= 6) {
+                        botVoidTunnelCells.push(c);
+                    }
+                }
+            }
+            else {
+                if (c.connect[DOWN]) {
+                    continue;
+                }
+                if (upDead != downDead) {
+                    if (!c.raiseHeight && y < rows-1 && !c.next[LEFT].connect[LEFT]) {
+                        singleDeadEndCells.push(c);
+                        c.isSingleDeadEndCandidate = true;
+                        c.singleDeadEndDir = upDead ? UP : DOWN;
+                        var offset = upDead ? 1 : 0;
+                        if (c.y <= 1+offset) {
+                            topSingleDeadEndCells.push(c);
+                        }
+                        else if (c.y >= 5+offset) {
+                            botSingleDeadEndCells.push(c);
+                        }
+                    }
+                }
+                else if (upDead && downDead) {
+                    if (y > 0 && y < rows-1) {
+                        if (c.next[LEFT].connect[UP] && c.next[LEFT].connect[DOWN]) {
+                            c.isDoubleDeadEndCandidate = true;
+                            if (c.y >= 2 && c.y <= 5) {
+                                doubleDeadEndCells.push(c);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // choose tunnels from candidates
+        var numTunnelsDesired = Math.random() <= 0.45 ? 2 : 1;
+        var c;
+        var selectSingleDeadEnd = function(c) {
+            c.connect[RIGHT] = true;
+            if (c.singleDeadEndDir == UP) {
+                c.topTunnel = true;
+            }
+            else {
+                c.next[DOWN].topTunnel = true;
+            }
+        };
+        if (numTunnelsDesired == 1) {
+            if (c = randomElement(voidTunnelCells)) {
+                c.topTunnel = true;
+            }
+            else if (c = randomElement(singleDeadEndCells)) {
+                selectSingleDeadEnd(c);
+            }
+            else if (c = randomElement(edgeTunnelCells)) {
+                c.topTunnel = true;
+            }
+            else {
+                throw "unable to find a single tunnel.  This should never happen.";
+            }
+        }
+        else if (numTunnelsDesired == 2) {
+            if (c = randomElement(doubleDeadEndCells)) {
+                c.connect[RIGHT] = true;
+                c.topTunnel = true;
+                c.next[DOWN].topTunnel = true;
+            }
+            else {
+                if (c = randomElement(topVoidTunnelCells)) {
+                    c.topTunnel = true;
+                }
+                else if (c = randomElement(topSingleDeadEndCells)) {
+                    selectSingleDeadEnd(c);
+                }
+                else if (c = randomElement(topEdgeTunnelCells)) {
+                    c.topTunnel = true;
+                }
+                else {
+                    // could not find a top tunnel opening
+                }
+
+                if (c = randomElement(botVoidTunnelCells)) {
+                    c.topTunnel = true;
+                }
+                else if (c = randomElement(botSingleDeadEndCells)) {
+                    selectSingleDeadEnd(c);
+                }
+                else if (c = randomElement(botEdgeTunnelCells)) {
+                    c.topTunnel = true;
+                }
+                else {
+                    // could not find a bottom tunnel opening
+                }
+            }
+        }
+
+        // clear unused void tunnels (dead ends)
+        var len = voidTunnelCells.length;
+        var i;
+
+        var replaceGroup = function(oldg,newg) {
+            var i,c;
+            for (i=0; i<rows*cols; i++) {
+                c = cells[i];
+                if (c.group == oldg) {
+                    c.group = newg;
+                }
+            }
+        };
+        for (i=0; i<len; i++) {
+            c = voidTunnelCells[i];
+            if (!c.topTunnel) {
+                replaceGroup(c.group, c.next[UP].group);
+                c.connect[UP] = true;
+                c.next[UP].connect[DOWN] = true;
             }
         }
     };
@@ -668,29 +777,67 @@ var genRandom = function() {
 
         // randomly join wall pieces to the boundary to increase difficulty
 
-        var x;
+        var x,y;
         var c;
+
+        // join cells to the top boundary
         for (x=0; x<cols; x++) {
             c = cells[x];
             if (!c.connect[LEFT] && !c.connect[RIGHT] && !c.connect[UP] &&
                 (!c.connect[DOWN] || !c.next[DOWN].connect[DOWN])) {
+
+                // ensure it will not create a dead-end
                 if ((!c.next[LEFT] || !c.next[LEFT].connect[UP]) &&
                     (c.next[RIGHT] && !c.next[RIGHT].connect[UP])) {
-                    if (Math.random() <= 0.25) {
-                        c.connect[UP] = true;
+
+                    // prevent connecting very large piece
+                    if (!(c.next[DOWN] && c.next[DOWN].connect[RIGHT] && c.next[DOWN].next[RIGHT].connect[RIGHT])) {
+                        c.isJoinCandidate = true;
+                        if (Math.random() <= 0.25) {
+                            c.connect[UP] = true;
+                        }
                     }
                 }
             }
         }
 
+        // join cells to the bottom boundary
         for (x=0; x<cols; x++) {
             c = cells[x+(rows-1)*cols];
             if (!c.connect[LEFT] && !c.connect[RIGHT] && !c.connect[DOWN] &&
                 (!c.connect[UP] || !c.next[UP].connect[UP])) {
+
+                // ensure it will not creat a dead-end
                 if ((!c.next[LEFT] || !c.next[LEFT].connect[DOWN]) &&
                     (c.next[RIGHT] && !c.next[RIGHT].connect[DOWN])) {
-                    if (Math.random() <= 0.25) {
-                        c.connect[DOWN] = true;
+
+                    // prevent connecting very large piece
+                    if (!(c.next[UP] && c.next[UP].connect[RIGHT] && c.next[UP].next[RIGHT].connect[RIGHT])) {
+                        c.isJoinCandidate = true;
+                        if (Math.random() <= 0.25) {
+                            c.connect[DOWN] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // join cells to the right boundary
+        var c2;
+        for (y=1; y<rows-1; y++) {
+            c = cells[cols-1+y*cols];
+            if (c.raiseHeight) {
+                continue;
+            }
+            if (!c.connect[RIGHT] && !c.connect[UP] && !c.connect[DOWN] &&
+                !c.next[UP].connect[RIGHT] && !c.next[DOWN].connect[RIGHT]) {
+                if (c.connect[LEFT]) {
+                    c2 = c.next[LEFT];
+                    if (!c2.connect[UP] && !c2.connect[DOWN] && !c2.connect[LEFT]) {
+                        c.isJoinCandidate = true;
+                        if (Math.random() <= 0.5) {
+                            c.connect[RIGHT] = true;
+                        }
                     }
                 }
             }
@@ -709,13 +856,9 @@ var genRandom = function() {
     // set helper attributes to position each cell
     setUpScaleCoords();
 
-    // destroy some connections to hide tunnels.
-    eraseTunnels();
-
     joinWalls();
 
-    // print out the number of tries to generate a valid map.
-    console.log(genCount);
+    createTunnels();
 };
 
 // Transform the simple cells to a tile array used for creating the map.
@@ -815,36 +958,14 @@ var getTiles = function() {
         }
     }
 
-    // choose tunnels
-    var x;
-    var minx = subcols;
-    var tunnely;
-    
-    // TODO: make a nontrivial tunnel selection algorithm
-
-    // start from center and move down
-    for (y=Math.floor(subrows/2); y<subrows; y++) {
-        for(x=subcols-1; getTile(x,y) == '_'; x--) {
+    // extend tunnels
+    var y;
+    for (c=cells[cols-1]; c; c = c.next[DOWN]) {
+        if (c.topTunnel) {
+            y = c.final_y+1;
+            setTile(subcols-1, y,'.');
+            setTile(subcols-2, y,'.');
         }
-        if (getTile(x-1,y) == '.' && x < minx) {
-            minx = x;
-            tunnely = y;
-        }
-    }
-
-    // start from center and move up
-    for (y=Math.floor(subrows/2); y>=0; y--) {
-        for(x=subcols-1; getTile(x,y) == '_'; x--) {
-        }
-        if (getTile(x-1,y) == '.' && x < minx) {
-            minx = x;
-            tunnely = y;
-        }
-    }
-
-    // create tunnel
-    for (x=minx; x<subcols+2; x++) {
-        setTile(x,tunnely,'.');
     }
 
     // fill in walls
@@ -861,16 +982,160 @@ var getTiles = function() {
     // create the ghost door
     setTile(2,12,'-');
 
-    // return a tile string
-    return tiles.join("");
+    // set energizers
+    var getTopEnergizerRange = function() {
+        var miny;
+        var maxy = subrows/2;
+        var x = subcols-2;
+        var y;
+        for (y=2; y<maxy; y++) {
+            if (getTile(x,y) == '.' && getTile(x,y+1) == '.') {
+                miny = y+1;
+                break;
+            }
+        }
+        maxy = Math.min(maxy,miny+7);
+        for (y=miny+1; y<maxy; y++) {
+            if (getTile(x-1,y) == '.') {
+                maxy = y-1;
+                break;
+            }
+        }
+        return {miny:miny, maxy:maxy};
+    };
+    var getBotEnergizerRange = function() {
+        var miny = subrows/2;
+        var maxy;
+        var x = subcols-2;
+        var y;
+        for (y=subrows-3; y>=miny; y--) {
+            if (getTile(x,y) == '.' && getTile(x,y+1) == '.') {
+                maxy = y;
+                break;
+            }
+        }
+        miny = Math.max(miny,maxy-7);
+        for (y=maxy-1; y>miny; y--) {
+            if (getTile(x-1,y) == '.') {
+                miny = y+1;
+                break;
+            }
+        }
+        return {miny:miny, maxy:maxy};
+    };
+    var x = subcols-2;
+    var y;
+    var range;
+    if (range = getTopEnergizerRange()) {
+        y = getRandomInt(range.miny, range.maxy);
+        setTile(x,y,'o');
+    }
+    if (range = getBotEnergizerRange()) {
+        y = getRandomInt(range.miny, range.maxy);
+        setTile(x,y,'o');
+    }
+
+    // erase pellets in the tunnels
+    var eraseUntilIntersection = function(x,y) {
+        var adj;
+        while (true) {
+            adj = [];
+            if (getTile(x-1,y) == '.') {
+                adj.push({x:x-1,y:y});
+            }
+            if (getTile(x+1,y) == '.') {
+                adj.push({x:x+1,y:y});
+            }
+            if (getTile(x,y-1) == '.') {
+                adj.push({x:x,y:y-1});
+            }
+            if (getTile(x,y+1) == '.') {
+                adj.push({x:x,y:y+1});
+            }
+            if (adj.length == 1) {
+                setTile(x,y,' ');
+                x = adj[0].x;
+                y = adj[0].y;
+            }
+            else {
+                break;
+            }
+        }
+    };
+    x = subcols-1;
+    for (y=0; y<subrows; y++) {
+        if (getTile(x,y) == '.') {
+            eraseUntilIntersection(x,y);
+        }
+    }
+
+    // erase pellets on starting position
+    setTile(1,subrows-8,' ');
+
+    // erase pellets around the ghost house
+    var i,j;
+    var y;
+    for (i=0; i<7; i++) {
+
+        // erase pellets from bottom of the ghost house proceeding down until
+        // reaching a pellet tile that isn't surround by walls
+        // on the left and right
+        y = subrows-14;
+        setTile(i, y, ' ');
+        j = 1;
+        while (getTile(i,y+j) == '.' &&
+                getTile(i-1,y+j) == '|' &&
+                getTile(i+1,y+j) == '|') {
+            setTile(i,y+j,' ');
+            j++;
+        }
+
+        // erase pellets from top of the ghost house proceeding up until
+        // reaching a pellet tile that isn't surround by walls
+        // on the left and right
+        y = subrows-20;
+        setTile(i, y, ' ');
+        j = 1;
+        while (getTile(i,y-j) == '.' &&
+                getTile(i-1,y-j) == '|' &&
+                getTile(i+1,y-j) == '|') {
+            setTile(i,y-j,' ');
+            j++;
+        }
+    }
+    // erase pellets on the side of the ghost house
+    for (i=0; i<7; i++) {
+
+        // erase pellets from side of the ghost house proceeding right until
+        // reaching a pellet tile that isn't surround by walls
+        // on the top and bottom.
+        x = 6;
+        y = subrows-14-i;
+        setTile(x, y, ' ');
+        j = 1;
+        while (getTile(x+j,y) == '.' &&
+                getTile(x+j,y-1) == '|' &&
+                getTile(x+j,y+1) == '|') {
+            setTile(x+j,y,' ');
+            j++;
+        }
+    }
+
+    // return a tile string (3 empty lines on top and 2 on bottom)
+    return (
+        "____________________________" +
+        "____________________________" +
+        "____________________________" +
+        tiles.join("") +
+        "____________________________" +
+        "____________________________");
 };
 
-var drawCells = function(ctx,left,top,size,title,
-    drawRaiseHeightCandidate,
-    drawRaiseHeight,
-    drawShrinkWidthCandidate,
-    drawShrinkWidth,
-    drawNumbers) {
+var randomColor = function() {
+    return '#'+('00000'+(Math.random()*(1<<24)|0).toString(16)).slice(-6);
+};
+
+var drawCells = function(ctx,left,top,size,title,options) {
 
     ctx.save();
     ctx.translate(left,top);
@@ -893,6 +1158,103 @@ var drawCells = function(ctx,left,top,size,title,
     ctx.lineWidth = "1";
     ctx.strokeStyle = "rgba(0,0,0,0.2)";
     ctx.stroke();
+
+    // set cell number font
+    ctx.font = size/3 + "px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+
+    var arrowsize = size/6;
+
+    ctx.lineWidth = "3";
+    for (i=0; i<cols*rows; i++) {
+        var c = cells[i];
+        var x = i % cols;
+        var y = Math.floor(i / cols);
+
+        if (options.drawRaiseHeightCandidate && c.isRaiseHeightCandidate) {
+            ctx.fillStyle = "rgba(0,0,255,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawShrinkWidthCandidate && c.isShrinkWidthCandidate) {
+            ctx.fillStyle = "rgba(255,0,0,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawJoinCandidate && c.isJoinCandidate) {
+            ctx.fillStyle = "rgba(0,255,0,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawSingleDeadEnd && c.isSingleDeadEndCandidate) {
+            ctx.fillStyle = "rgba(255,255,0,0.4)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawDoubleDeadEnd && c.isDoubleDeadEndCandidate) {
+            ctx.fillStyle = "rgba(0,255,255,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawVoidTunnel && c.isVoidTunnelCandidate) {
+            ctx.fillStyle = "rgba(0,0,0,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawChosenTunnel && c.topTunnel) {
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(x*size+size/2,y*size+5);
+            ctx.moveTo(-arrowsize,arrowsize);
+            ctx.lineTo(0,0);
+            ctx.lineTo(arrowsize,arrowsize);
+            ctx.strokeStyle = "rgba(0,255,0,0.7)";
+            ctx.stroke();
+            ctx.restore();
+        }
+        else if (options.drawEdgeTunnel && c.isEdgeTunnelCandidate) {
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(x*size+size/2,y*size+5);
+            ctx.moveTo(-arrowsize,arrowsize);
+            ctx.lineTo(0,0);
+            ctx.lineTo(arrowsize,arrowsize);
+            ctx.strokeStyle = "rgba(0,0,0,0.7)";
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        if (options.drawRaiseHeight && c.raiseHeight) {
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(x*size+size/2,y*size+size-arrowsize);
+            ctx.moveTo(-arrowsize,-arrowsize);
+            ctx.lineTo(0,0);
+            ctx.lineTo(arrowsize,-arrowsize);
+            ctx.strokeStyle = "rgba(0,0,255,0.7)";
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        if (options.drawShrinkWidth && c.shrinkWidth) {
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(x*size+size-arrowsize-arrowsize,y*size+size/2);
+            ctx.moveTo(arrowsize,-arrowsize);
+            ctx.lineTo(0,0);
+            ctx.lineTo(arrowsize,arrowsize);
+            ctx.restore();
+            ctx.strokeStyle = "rgba(255,0,0,0.7)";
+            ctx.stroke();
+        }
+
+        // draw cell number (order)
+        if (options.drawNumbers && c.no != undefined) {
+            ctx.fillStyle = "#000";
+            ctx.fillText(c.no, x*size+size/2, y*size+size/2);
+        }
+    }
 
     ctx.beginPath();
     var i;
@@ -920,193 +1282,8 @@ var drawCells = function(ctx,left,top,size,title,
         }
     }
     ctx.lineWidth = "3";
+    ctx.lineCap = 'round';
     ctx.strokeStyle = "rgba(0,0,0,0.9)";
-    ctx.stroke();
-
-    // set cell number font
-    ctx.font = size/3 + "px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "center";
-
-    var arrowsize = size/6;
-
-    ctx.lineWidth = "3";
-    for (i=0; i<cols*rows; i++) {
-        var c = cells[i];
-        var x = i % cols;
-        var y = Math.floor(i / cols);
-
-        if (drawRaiseHeightCandidate && c.isRaiseHeightCandidate) {
-            ctx.fillStyle = "rgba(0,0,255,0.2)";
-            ctx.fillRect(x*size,y*size,size,size);
-        }
-
-        if (drawShrinkWidthCandidate && c.isShrinkWidthCandidate) {
-            ctx.fillStyle = "rgba(255,0,0,0.2)";
-            ctx.fillRect(x*size,y*size,size,size);
-        }
-
-        if (drawRaiseHeight && c.raiseHeight) {
-            ctx.beginPath();
-            ctx.save();
-            ctx.translate(x*size+size/2,y*size+size-arrowsize);
-            ctx.moveTo(-arrowsize,-arrowsize);
-            ctx.lineTo(0,0);
-            ctx.lineTo(arrowsize,-arrowsize);
-            ctx.strokeStyle = "rgba(0,0,255,0.7)";
-            ctx.stroke();
-            ctx.restore();
-        }
-
-        if (drawShrinkWidth && c.shrinkWidth) {
-            ctx.beginPath();
-            ctx.save();
-            ctx.translate(x*size+size-arrowsize-arrowsize,y*size+size/2);
-            ctx.moveTo(arrowsize,-arrowsize);
-            ctx.lineTo(0,0);
-            ctx.lineTo(arrowsize,arrowsize);
-            ctx.restore();
-            ctx.strokeStyle = "rgba(255,0,0,0.7)";
-            ctx.stroke();
-        }
-
-        // draw cell number (order)
-        if (drawNumbers && c.no != undefined) {
-            ctx.fillStyle = "#000";
-            ctx.fillText(c.no, x*size+size/2, y*size+size/2);
-        }
-    }
-
-    ctx.restore();
-};
-
-var drawResult = function(ctx,left,top,size) {
-    ctx.save();
-    ctx.translate(left,top);
-
-    var subsize = size / 3;
-    var subrows = rows*3+1;
-    var subcols = cols*3-1;
-
-    // draw grid
-    ctx.beginPath();
-    var i;
-    var x,y;
-    for (i=0; i<=subrows; i++) {
-        y = i*subsize;
-        ctx.moveTo(0,y);
-        ctx.lineTo(subcols*subsize,y);
-    }
-    for (i=0; i<=subcols; i++) {
-        x = i*subsize;
-        ctx.moveTo(x,0);
-        ctx.lineTo(x,subrows*subsize);
-    }
-    ctx.lineWidth = "1";
-    ctx.strokeStyle = "rgba(0,0,0,0.3)";
-    ctx.stroke();
-
-    // draw cells
-    ctx.beginPath();
-    var c,c0,c1,c2,c3;
-    var w,h;
-    for (i=0; i<rows*cols; i++) {
-
-        c = cells[i];
-
-        x = c.final_x*subsize;
-        y = c.final_y*subsize;
-        w = c.final_w*subsize;
-        h = c.final_h*subsize;
-
-        // draw walls
-        if (!c.connect[UP]) {
-            ctx.moveTo(x, y);
-            ctx.lineTo(x+w, y);
-        }
-        if (!c.connect[LEFT]) {
-            ctx.moveTo(x, y);
-            ctx.lineTo(x, y+h);
-        }
-        if (!c.connect[DOWN]) {
-            ctx.moveTo(x, y+h);
-            ctx.lineTo(x+w, y+h);
-        }
-        if (!c.connect[RIGHT]) {
-            ctx.moveTo(x+w, y);
-            ctx.lineTo(x+w, y+h);
-        }
-    }
-    ctx.lineWidth = "3";
-    ctx.strokeStyle = "rgba(0,0,0,0.5)";
-    ctx.stroke();
-
-    ctx.restore();
-};
-
-var drawResult2 = function(ctx,left,top,size) {
-    ctx.save();
-    ctx.translate(left,top);
-
-    var subsize = size / 3;
-    var subrows = rows*3+1+3;
-    var subcols = cols*3-1+2;
-
-    // draw grid
-    var i;
-    var x,y;
-    ctx.beginPath();
-    for (i=0; i<=subrows; i++) {
-        y = i*subsize;
-        ctx.moveTo(0,y);
-        ctx.lineTo(subcols*subsize,y);
-    }
-    for (i=0; i<=subcols; i++) {
-        x = i*subsize;
-        ctx.moveTo(x,0);
-        ctx.lineTo(x,subrows*subsize);
-    }
-    ctx.lineWidth = "1";
-    ctx.strokeStyle = "rgba(0,0,0,0.3)";
-    ctx.stroke();
-
-    // draw cells
-    ctx.fillStyle = "rgba(0,0,0,1)";
-    var c,c0,c1,c2,c3;
-    var w,h;
-    var j;
-    ctx.beginPath();
-    for (i=0; i<rows*cols; i++) {
-
-        c = cells[i];
-
-        x = c.final_x*subsize;
-        y = c.final_y*subsize+subsize;
-        w = c.final_w*subsize;
-        h = c.final_h*subsize;
-
-        // draw walls
-        if (!c.connect[UP]) {
-            ctx.fillRect(x,y,w,subsize);
-        }
-        if (!c.connect[LEFT]) {
-            ctx.fillRect(x,y,subsize,h);
-        }
-
-        if (i % cols == cols-1) {
-            if (!c.connect[RIGHT]) {
-                ctx.fillRect(x+w,y,subsize,h);
-            }
-        }
-
-        if (Math.floor(i/cols) == rows-1) {
-            if (!c.connect[DOWN]) {
-                ctx.fillRect(x,y+h,w,subsize);
-            }
-        }
-    }
-    ctx.lineWidth = "3";
-    ctx.strokeStyle = "rgba(0,0,0,0.5)";
     ctx.stroke();
 
     ctx.restore();
@@ -1161,4 +1338,14 @@ var drawTiles = function(ctx,left,top,size) {
     }
 
     ctx.restore();
+};
+
+var mapgen = function() {
+    genRandom();
+    var map = new Map(28,36,getTiles());
+    map.name = "";
+    map.wallFillColor = randomColor();
+    map.wallStrokeColor = rgbString(hslToRgb(Math.random(), Math.random(), Math.random() * 0.4 + 0.6));
+    map.pelletColor = "#ffb8ae";
+    return map;
 };
