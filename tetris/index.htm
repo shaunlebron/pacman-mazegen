@@ -8,25 +8,39 @@
 <script>
 
 window.onload = function() {
-    var size = 30;
+    var size = 50;
 
     var canvas = document.getElementById('canvas');
-    canvas.width = ((cols+1)*4+4)*size;
-    canvas.height = (rows+2)*size;
+    canvas.width = 1280;
+    canvas.height = 1024;
 
     var ctx = canvas.getContext('2d');
 
     genRandom();
-    drawCells(ctx,size,size,size,"Simple Model",false,false,false,false,true);
-    drawCells(ctx,(cols+2)*size,size,size,"Height Adjustments",true,true,false,false);
-    drawCells(ctx,(2*cols+3)*size,size,size,"Width Adjustments",false,false,true,true);
+    var x,y;
 
+    x = size;
+    y = size;
+    drawCells(ctx,x,y,size,"Simple Model",{'drawNumbers':true});
+
+    x += (cols+1)*size;
+    drawCells(ctx,x,y,size,"Height Adjustments",{'drawRaiseHeightCandidate':true, 'drawRaiseHeight':true});
+
+    x += (cols+1)*size;
+    drawCells(ctx,x,y,size,"Width Adjustments",{'drawShrinkWidthCandidate':true, 'drawShrinkWidth':true});
+
+    x += (cols+1)*size;
+    drawCells(ctx,x,y,size,"Cell Join Candidates",
+        {'drawJoinCandidate':true,'drawSingleDeadEnd':true,'drawDoubleDeadEnd':true,'drawVoidTunnel':true});
+
+    /*
     var map = new Map(28,36,getTiles());
     map.name = "Random Map";
     map.wallFillColor = randomColor();
     map.wallStrokeColor = rgbString(hslToRgb(Math.random(), Math.random(), Math.random() * 0.4 + 0.6));
     map.pelletColor = "#ffb8ae";
-    map.draw(ctx,(3*cols+4)*size,size,false);
+    map.draw(ctx,x,y,false);
+    */
 
     //drawResult(ctx,(cols+2)*size,size,size);
     //drawResult2(ctx,(2*cols+3)*size,size,size);
