@@ -14,6 +14,13 @@ var shuffle = function(list) {
     }
 };
 
+var randomElement = function(list) {
+    var len = list.length;
+    if (len > 0) {
+        return list[getRandomInt(0,len-1)];
+    }
+};
+
 var UP = 0;
 var RIGHT = 1;
 var DOWN = 2;
@@ -627,13 +634,15 @@ var genRandom = function() {
             if (c.connect[UP]) {
                 continue;
             }
-            c.isEdgeTunnelCandidate = true;
-            edgeTunnelCells.push(c);
-            if (c.y <= 2) {
-                topEdgeTunnelCells.push(c);
-            }
-            else if (c.y >= 5) {
-                botEdgeTunnelCells.push(c);
+            if (c.y > 1 && c.y < rows-2) {
+                c.isEdgeTunnelCandidate = true;
+                edgeTunnelCells.push(c);
+                if (c.y <= 2) {
+                    topEdgeTunnelCells.push(c);
+                }
+                else if (c.y >= 5) {
+                    botEdgeTunnelCells.push(c);
+                }
             }
             upDead = (!c.next[UP] || c.next[UP].connect[RIGHT]);
             downDead = (!c.next[DOWN] || c.next[DOWN].connect[RIGHT]);
@@ -654,9 +663,10 @@ var genRandom = function() {
                     continue;
                 }
                 if (upDead != downDead) {
-                    if (y < rows-1) {
+                    if (!c.raiseHeight && y < rows-1 && !c.next[LEFT].connect[LEFT]) {
                         singleDeadEndCells.push(c);
                         c.isSingleDeadEndCandidate = true;
+                        c.singleDeadEndDir = upDead ? UP : DOWN;
                         var offset = upDead ? 1 : 0;
                         if (c.y <= 1+offset) {
                             topSingleDeadEndCells.push(c);
@@ -667,24 +677,100 @@ var genRandom = function() {
                     }
                 }
                 else if (upDead && downDead) {
-                    if (y > 0 && y < rows-1 && (c.next[LEFT].connect[UP] || c.next[LEFT].connect[DOWN]) ) {
-                        c.isDoubleDeadEndCandidate = true;
-                        if (c.y >= 2 && c.y <= 5) {
-                            doubleDeadEndCells.push(c);
+                    if (y > 0 && y < rows-1) {
+                        if (c.next[LEFT].connect[UP] && c.next[LEFT].connect[DOWN]) {
+                            c.isDoubleDeadEndCandidate = true;
+                            if (c.y >= 2 && c.y <= 5) {
+                                doubleDeadEndCells.push(c);
+                            }
                         }
                     }
                 }
             }
         }
 
-        // TODO: choose tunnels from candidates
+        // choose tunnels from candidates
         var numTunnelsDesired = Math.random() <= 0.45 ? 2 : 1;
+        var c;
+        var selectSingleDeadEnd = function(c) {
+            c.connect[RIGHT] = true;
+            if (c.singleDeadEndDir == UP) {
+                c.topTunnel = true;
+            }
+            else {
+                c.next[DOWN].topTunnel = true;
+            }
+        };
         if (numTunnelsDesired == 1) {
+            if (c = randomElement(voidTunnelCells)) {
+                c.topTunnel = true;
+            }
+            else if (c = randomElement(singleDeadEndCells)) {
+                selectSingleDeadEnd(c);
+            }
+            else if (c = randomElement(edgeTunnelCells)) {
+                c.topTunnel = true;
+            }
+            else {
+                throw "unable to find a single tunnel.  This should never happen.";
+            }
         }
         else if (numTunnelsDesired == 2) {
+            if (c = randomElement(doubleDeadEndCells)) {
+                c.connect[RIGHT] = true;
+                c.topTunnel = true;
+                c.next[DOWN].topTunnel = true;
+            }
+            else {
+                if (c = randomElement(topVoidTunnelCells)) {
+                    c.topTunnel = true;
+                }
+                else if (c = randomElement(topSingleDeadEndCells)) {
+                    selectSingleDeadEnd(c);
+                }
+                else if (c = randomElement(topEdgeTunnelCells)) {
+                    c.topTunnel = true;
+                }
+                else {
+                    // could not find a top tunnel opening
+                }
+
+                if (c = randomElement(botVoidTunnelCells)) {
+                    c.topTunnel = true;
+                }
+                else if (c = randomElement(botSingleDeadEndCells)) {
+                    selectSingleDeadEnd(c);
+                }
+                else if (c = randomElement(botEdgeTunnelCells)) {
+                    c.topTunnel = true;
+                }
+                else {
+                    // could not find a bottom tunnel opening
+                }
+            }
         }
 
-        // TODO: clear unused void tunnels (dead ends)
+        // clear unused void tunnels (dead ends)
+        var len = voidTunnelCells.length;
+        var i;
+
+        var replaceGroup = function(oldg,newg) {
+            var i,c;
+            for (i=0; i<rows*cols; i++) {
+                c = cells[i];
+                if (c.group == oldg) {
+                    c.group = newg;
+                }
+            }
+        };
+        for (i=0; i<len; i++) {
+            c = voidTunnelCells[i];
+            if (!c.topTunnel) {
+                replaceGroup(c.group, c.next[UP].group);
+                c.connect[UP] = true;
+                c.next[UP].connect[DOWN] = true;
+            }
+        }
     };
 
     var joinWalls = function() {
@@ -740,6 +826,9 @@ var genRandom = function() {
         var c2;
         for (y=1; y<rows-1; y++) {
             c = cells[cols-1+y*cols];
+            if (c.raiseHeight) {
+                continue;
+            }
             if (!c.connect[RIGHT] && !c.connect[UP] && !c.connect[DOWN] &&
                 !c.next[UP].connect[RIGHT] && !c.next[DOWN].connect[RIGHT]) {
                 if (c.connect[LEFT]) {
@@ -871,20 +960,11 @@ var getTiles = function() {
 
     // extend tunnels
     var y;
-    var topHalf = false;
-    var botHalf = false;
-    var extendTunnel = function(y) {
-        setTile(subcols-1, y,'.');
-        setTile(subcols-2, y,'.');
-    };
     for (c=cells[cols-1]; c; c = c.next[DOWN]) {
         if (c.topTunnel) {
             y = c.final_y+1;
-            extendTunnel(y);
-        }
-        if (c.botTunnel) {
-            y = c.final_y+1 + c.final_h;
-            extendTunnel(y);
+            setTile(subcols-1, y,'.');
+            setTile(subcols-2, y,'.');
         }
     }
 
@@ -903,24 +983,89 @@ var getTiles = function() {
     setTile(2,12,'-');
 
     // set energizers
+    var getTopEnergizerRange = function() {
+        var miny;
+        var maxy = subrows/2;
+        var x = subcols-2;
+        var y;
+        for (y=2; y<maxy; y++) {
+            if (getTile(x,y) == '.' && getTile(x,y+1) == '.') {
+                miny = y+1;
+                break;
+            }
+        }
+        maxy = Math.min(maxy,miny+7);
+        for (y=miny+1; y<maxy; y++) {
+            if (getTile(x-1,y) == '.') {
+                maxy = y-1;
+                break;
+            }
+        }
+        return {miny:miny, maxy:maxy};
+    };
+    var getBotEnergizerRange = function() {
+        var miny = subrows/2;
+        var maxy;
+        var x = subcols-2;
+        var y;
+        for (y=subrows-3; y>=miny; y--) {
+            if (getTile(x,y) == '.' && getTile(x,y+1) == '.') {
+                maxy = y;
+                break;
+            }
+        }
+        miny = Math.max(miny,maxy-7);
+        for (y=maxy-1; y>miny; y--) {
+            if (getTile(x-1,y) == '.') {
+                miny = y+1;
+                break;
+            }
+        }
+        return {miny:miny, maxy:maxy};
+    };
+    var x = subcols-2;
     var y;
-    for (y=2; y<subrows/2; y++) {
-        if (getTile(subcols-2,y) == '.' && getTile(subcols-2,y-1) == '.') {
-            setTile(subcols-2,y+1,'o');
-            break;
-        }
+    var range;
+    if (range = getTopEnergizerRange()) {
+        y = getRandomInt(range.miny, range.maxy);
+        setTile(x,y,'o');
     }
-    for (y=subrows-3; y>=subrows/2; y--) {
-        if (getTile(subcols-2,y) == '.' && getTile(subcols-2,y+1) == '.') {
-            setTile(subcols-2,y,'o');
-            break;
-        }
+    if (range = getBotEnergizerRange()) {
+        y = getRandomInt(range.miny, range.maxy);
+        setTile(x,y,'o');
     }
 
     // erase pellets in the tunnels
+    var eraseUntilIntersection = function(x,y) {
+        var adj;
+        while (true) {
+            adj = [];
+            if (getTile(x-1,y) == '.') {
+                adj.push({x:x-1,y:y});
+            }
+            if (getTile(x+1,y) == '.') {
+                adj.push({x:x+1,y:y});
+            }
+            if (getTile(x,y-1) == '.') {
+                adj.push({x:x,y:y-1});
+            }
+            if (getTile(x,y+1) == '.') {
+                adj.push({x:x,y:y+1});
+            }
+            if (adj.length == 1) {
+                setTile(x,y,' ');
+                x = adj[0].x;
+                y = adj[0].y;
+            }
+            else {
+                break;
+            }
+        }
+    };
+    x = subcols-1;
     for (y=0; y<subrows; y++) {
-        for (x=subcols-1; getTile(x,y) == '.' && getTile(x,y-1) == '|' && getTile(x,y+1) == '|'; x--) {
-            setTile(x,y,' ');
+        if (getTile(x,y) == '.') {
+            eraseUntilIntersection(x,y);
         }
     }
 
@@ -1057,7 +1202,18 @@ var drawCells = function(ctx,left,top,size,title,options) {
             ctx.fillRect(x*size,y*size,size,size);
         }
 
-        if (options.drawEdgeTunnel && c.isEdgeTunnelCandidate) {
+        if (options.drawChosenTunnel && c.topTunnel) {
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(x*size+size/2,y*size+5);
+            ctx.moveTo(-arrowsize,arrowsize);
+            ctx.lineTo(0,0);
+            ctx.lineTo(arrowsize,arrowsize);
+            ctx.strokeStyle = "rgba(0,255,0,0.7)";
+            ctx.stroke();
+            ctx.restore();
+        }
+        else if (options.drawEdgeTunnel && c.isEdgeTunnelCandidate) {
             ctx.beginPath();
             ctx.save();
             ctx.translate(x*size+size/2,y*size+5);
