@@ -261,6 +261,7 @@ Map.prototype.draw = function(ctx,left,top,print) {
     ctx.rect(0,0,this.widthPixels, this.heightPixels);
     ctx.clip();
     if (!print) {
+        ctx.fillStyle = "#000";
         ctx.fillRect(0,0,this.widthPixels, this.heightPixels);
     }
 
