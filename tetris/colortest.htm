@@ -1684,6 +1684,29 @@ var mapgen = (function(){
                 }
             }
 
+            // don't allow a horizontal path to cut straight through a map (through tunnels)
+            var exit,topy;
+            for (y=0; y<rows; y++) {
+                c = cells[cols-1+y*cols];
+                if (c.topTunnel) {
+                    exit = true;
+                    topy = c.final_y;
+                    while (c.next[LEFT]) {
+                        c = c.next[LEFT];
+                        if (!c.connect[UP] && c.final_y == topy) {
+                            continue;
+                        }
+                        else {
+                            exit = false;
+                            break;
+                        }
+                    }
+                    if (exit) {
+                        return false;
+                    }
+                }
+            }
+
             // clear unused void tunnels (dead ends)
             var len = voidTunnelCells.length;
             var i;
