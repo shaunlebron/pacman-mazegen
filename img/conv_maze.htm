@@ -1,12 +1,14 @@
-
+<!DOCTYPE html>
+<html>
 <!--
 This was an attempt to illustrate why conventional maze generation routines
 couldn't be used to generate Pac-Man maps, but in the process I've actually
 found a lead that may suggest otherwise.
 -->
-
+<head>
 <script src="Map.js"></script>
-
+</head>
+<body>
 <canvas id="canvas"></canvas>
 
 <script>
@@ -101,3 +103,5 @@ window.onload = function() {
     map.draw(ctx,0,0,print=true);
 };
 </script>
+</body>
+</html>
