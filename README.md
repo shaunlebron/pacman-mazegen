@@ -14,9 +14,7 @@ classic.
 Status
 ------
 
-The 'tetris' folder contains an initial working solution:
-
-<img src="https://github.com/shaunew/Pac-Man/raw/gh-pages/mapgen/tetris/working.png" />
+<a href="http://shaunew.github.com/Pac-Man/mapgen">Click here to read the article explaining the current solution</a>
 
 History
 -------
@@ -29,26 +27,3 @@ History
   is a good introduction to map generation using Clingo.
 - The 'spanningtree' folder is a lead to apply a modified version of conventional maze generation algorithms.
 - The 'tetris' folder contains a solution for stacking pieces in a tetris like manner.
-
-Original Maps
--------------
-
-The following shows the structure of each of the six original maps.
-
-**Color Version**
-
-<img src="https://github.com/shaunew/Pac-Man/raw/gh-pages/mapgen/img/origmaps_2x.png" width="100%"/>
-
-**Plain Version**
-
-<img src="https://github.com/shaunew/Pac-Man/raw/gh-pages/mapgen/img/origmaps_2x_print.png" width="100%"/>
-
-**Paths Version**
-
-This is perhaps the simplest way to visualize the maps.
-
-<img src="https://github.com/shaunew/Pac-Man/raw/gh-pages/mapgen/img/origmaps_path.png" width="100%"/>
-
-NOTE: The original prototype shown above is a [photograph of Iwatani's sketchbook](http://www.control-online.nl/gamesindustrie/2010/06/22/iwatani-toont-gamesgeschiedenis-in-meest-pure-vorm/).
-
-Check the 'img' subfolder for details on how the pictures above were generated.
