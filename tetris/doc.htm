@@ -1,0 +1,306 @@
+
+<!doctype html>
+<html>
+<head>
+<script>
+var UP = 0;
+var RIGHT = 1;
+var DOWN = 2;
+var LEFT = 3;
+
+var rows = 9;
+var cols = 5;
+var createCells = function() {
+    var cells = {};
+    for (i=0; i<rows*cols; i++) {
+        cells[i] = {
+            x: i%cols,
+            y: Math.floor(i/cols),
+            filled: false,
+            connect: [true, true, true, true],
+            colors: {},
+            next: [],
+            no: undefined,
+            group: undefined,
+        };
+    }
+    for (i=0; i<rows*cols; i++) {
+        var c = cells[i];
+        if (c.x > 0)
+            c.next[LEFT] = cells[i-1];
+        if (c.x < cols - 1)
+            c.next[RIGHT] = cells[i+1];
+        if (c.y > 0)
+            c.next[UP] = cells[i-cols];
+        if (c.y < rows - 1)
+            c.next[DOWN] = cells[i+cols];
+    }
+    return {
+        makeWalls: function(walls, color) {
+            color = color || "#000";
+            var wallLen = walls.length;
+            var i,j,x,y,dir;
+            var wall;
+            for (i=0; i<wallLen; i++) {
+                wall = walls[i];
+                var row = wall[0];
+                var col = wall[1];
+                var dir = wall[2];
+                if (dir.length) {
+                    var dirlen = dir.length;
+                    for (j=0; j<dirlen; j++) {
+                        this.makeWall(row,col,dir[j], color);
+                    }
+                }
+                else {
+                    this.makeWall(row,col,dir, color);
+                }
+            }
+        },
+        makeWall: function(row, col, dir, color) {
+            color = color || "#000";
+            var cell = cells[col+row*cols];
+            cell.connect[dir] = false;
+            cell.colors[dir] = color;
+            cell.next[dir].connect[(dir+2)%4] = false;
+            cell.next[dir].colors[(dir+2)%4] = color;
+            if (cell.x == 0 && dir == RIGHT) {
+                cell.connect[LEFT] = false;
+                cell.colors[LEFT] = color;
+            }
+        },
+        display: function(ctx,x,y) {
+            var canvas = document.createElement('canvas');
+            var pad = 5;
+            var size = 40;
+            canvas.width = size*cols+pad*2;
+            canvas.height = size*rows+pad*2;
+            document.getElementById('container').appendChild(canvas);
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = "#FFF";
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            drawCells(ctx,cells,pad,pad,size);
+        },
+    };
+};
+var drawCells = function(ctx,cells,left,top,size,title,options) {
+
+    title = title || "";
+    options = options || {};
+
+    ctx.save();
+    ctx.translate(left,top);
+
+    // draw title
+    ctx.font = "bold " + size/3 + "px sans-serif";
+    ctx.textBaseline = "bottom";
+    ctx.textAlign = "left";
+    ctx.fillText(title, 0, -5);
+
+    ctx.beginPath();
+    for (y=0; y<=rows; y++) {
+        ctx.moveTo(0,y*size);
+        ctx.lineTo(cols*size,y*size);
+    }
+    for (x=0; x<=cols; x++) {
+        ctx.moveTo(x*size,0);
+        ctx.lineTo(x*size,rows*size);
+    }
+    ctx.lineWidth = "1";
+    ctx.strokeStyle = "#AAA";
+    ctx.stroke();
+
+    // set cell number font
+    ctx.font = size/3 + "px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+
+    var arrowsize = size/6;
+
+    ctx.lineWidth = "3";
+    for (i=0; i<cols*rows; i++) {
+        var c = cells[i];
+        var x = i % cols;
+        var y = Math.floor(i / cols);
+
+        if (options.drawRaiseHeightCandidate && c.isRaiseHeightCandidate) {
+            ctx.fillStyle = "rgba(0,0,255,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawShrinkWidthCandidate && c.isShrinkWidthCandidate) {
+            ctx.fillStyle = "rgba(255,0,0,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawJoinCandidate && c.isJoinCandidate) {
+            ctx.fillStyle = "rgba(0,255,0,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawSingleDeadEnd && c.isSingleDeadEndCandidate) {
+            ctx.fillStyle = "rgba(255,255,0,0.4)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawDoubleDeadEnd && c.isDoubleDeadEndCandidate) {
+            ctx.fillStyle = "rgba(0,255,255,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawVoidTunnel && c.isVoidTunnelCandidate) {
+            ctx.fillStyle = "rgba(0,0,0,0.2)";
+            ctx.fillRect(x*size,y*size,size,size);
+        }
+
+        if (options.drawChosenTunnel && c.topTunnel) {
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(x*size+size/2,y*size+5);
+            ctx.moveTo(-arrowsize,arrowsize);
+            ctx.lineTo(0,0);
+            ctx.lineTo(arrowsize,arrowsize);
+            ctx.strokeStyle = "rgba(0,255,0,0.7)";
+            ctx.stroke();
+            ctx.restore();
+        }
+        else if (options.drawEdgeTunnel && c.isEdgeTunnelCandidate) {
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(x*size+size/2,y*size+5);
+            ctx.moveTo(-arrowsize,arrowsize);
+            ctx.lineTo(0,0);
+            ctx.lineTo(arrowsize,arrowsize);
+            ctx.strokeStyle = "rgba(0,0,0,0.7)";
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        if (options.drawRaiseHeight && c.raiseHeight) {
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(x*size+size/2,y*size+size-arrowsize);
+            ctx.moveTo(-arrowsize,-arrowsize);
+            ctx.lineTo(0,0);
+            ctx.lineTo(arrowsize,-arrowsize);
+            ctx.strokeStyle = "rgba(0,0,255,0.7)";
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        if (options.drawShrinkWidth && c.shrinkWidth) {
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(x*size+size-arrowsize-arrowsize,y*size+size/2);
+            ctx.moveTo(arrowsize,-arrowsize);
+            ctx.lineTo(0,0);
+            ctx.lineTo(arrowsize,arrowsize);
+            ctx.restore();
+            ctx.strokeStyle = "rgba(255,0,0,0.7)";
+            ctx.stroke();
+        }
+
+        // draw cell number (order)
+        if (options.drawNumbers && c.no != undefined) {
+            ctx.fillStyle = "#000";
+            ctx.fillText(c.no, x*size+size/2, y*size+size/2);
+        }
+    }
+
+    var i;
+    for (i=0; i<cols*rows; i++) {
+        var c = cells[i];
+        var x = i % cols;
+        var y = Math.floor(i / cols);
+
+        // draw walls
+        ctx.lineWidth = "3";
+        ctx.lineCap = 'round';
+        if (!c.connect[UP]) {
+            ctx.beginPath();
+            ctx.moveTo(x*size, y*size);
+            ctx.lineTo(x*size+size, y*size);
+            ctx.strokeStyle = c.colors[UP];
+            ctx.stroke();
+        }
+        if (!c.connect[DOWN]) {
+            ctx.beginPath();
+            ctx.moveTo(x*size, y*size+size);
+            ctx.lineTo(x*size+size, y*size+size);
+            ctx.strokeStyle = c.colors[DOWN];
+            ctx.stroke();
+        }
+        if (!c.connect[LEFT]) {
+            ctx.beginPath();
+            ctx.moveTo(x*size, y*size);
+            ctx.lineTo(x*size, y*size+size);
+            ctx.strokeStyle = c.colors[LEFT];
+            ctx.stroke();
+        }
+        if (!c.connect[RIGHT]) {
+            ctx.beginPath();
+            ctx.moveTo(x*size+size, y*size);
+            ctx.lineTo(x*size+size, y*size+size);
+            ctx.strokeStyle = c.colors[RIGHT];
+            ctx.stroke();
+        }
+    }
+
+    ctx.restore();
+};
+</script>
+<style>
+    body {
+        background: #DDD;
+    }
+    #container {
+        padding-left: 40px;
+        padding-top: 20px;
+        padding-bottom: 20px;
+        padding-right: 40px;
+        margin-left:auto;
+        margin-right:auto;
+        background: #FFF;
+        width: 500px;
+    }
+</style>
+</head>
+<body>
+<div id='container'>
+    <h1>Pac-Man Maze Generation</h1>
+
+    <p>We start with the following 5x9 grid of tiles:</p>
+
+    <script>
+        var cells = createCells();
+        cells.makeWalls([
+            [3,0,UP],
+            [3,1,[UP,RIGHT]],
+            [4,1,[DOWN,RIGHT]],
+            [4,0,DOWN],
+        ],"#F00");
+        cells.makeWalls([
+            [6,0,DOWN]
+        ],"#00F");
+        cells.display();
+    </script>
+
+    <p>In <span style="color:red">red</span> is the path around the ghost pen.
+    In <span style="color:blue">blue</span> is Pac-Man's starting position.</p>
+
+    <p>
+    We then proceed by playing tetris.  Pieces fall to the left-hand side.
+    No gaps can be made.
+    </p>
+
+
+    <p>
+    The edges create paths inside the maze.  We erase some of them on the
+    border for variation.
+    </p>
+
+    <p>
+    </p>
+
+</div>
+</body>

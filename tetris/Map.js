@@ -293,27 +293,18 @@ Map.prototype.draw = function(ctx,left,top,print) {
     var energizerSize = 3;
     for (y=0; y<this.numRows; y++) {
         for (x=0; x<this.numCols; x++) {
-            if (this.getTile(x,y) == '.') {
+            var t = this.getTile(x,y);
+            if (t=='o' || t=='.' || t==' ') {
                 ctx.fillStyle=print?"#bbb":this.pelletColor;
                 ctx.fillRect(
                     x*tileSize+tileSize/2-pelletSize/2,
                     y*tileSize+tileSize/2-pelletSize/2,
                     pelletSize,pelletSize);
             }
-            else if (this.getTile(x,y) == 'o') {
-                ctx.beginPath();
-                ctx.arc(
-                    x*tileSize+tileSize/2,
-                    y*tileSize+tileSize/2,
-                    energizerSize,0,Math.PI*2);
-                ctx.fillStyle="#FFF";
-                ctx.fill();
-            }
         }
     }
 
     // draw grid
-    /*
     ctx.strokeStyle=print?"rgba(0,0,0,0.3)":"rgba(255,255,255,0.3)";
     ctx.beginPath();
     for (y=0; y<=this.numRows; y++) {
@@ -325,10 +316,11 @@ Map.prototype.draw = function(ctx,left,top,print) {
         ctx.lineTo(x*tileSize,this.heightPixels);
     }
     ctx.stroke();
-    */
 
     // draw title
     if (this.name) {
+        ctx.textBaseline = "top";
+        ctx.font = "20px sans-serif";
         ctx.fillStyle = print?"#000":"#fff";
         ctx.fillText(this.name, 0,tileSize/2);
     }
@@ -394,6 +386,8 @@ Map.prototype.drawPath = function(ctx,left,top) {
     // draw title
     if (this.name) {
         ctx.fillStyle = print?"#000":"#fff";
+        ctx.font = "20px sans-serif";
+        ctx.textBaseline = "top";
         ctx.fillText(this.name, 0,tileSize/2);
     }
 

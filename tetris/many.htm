@@ -6,13 +6,14 @@
 <script src="Map.js"></script>
 </head>
 <body>
-<p>Refresh to generate new maps.</p>
+<p>
+<button onclick="draw()">Click to generate new maps</button>
+</p>
 
 <canvas id='canvas'></canvas>
 
 <script>
-
-window.onload = function() {
+var draw = function() {
     var canvas = document.getElementById('canvas');
 
     var rows = 4;
@@ -38,6 +39,10 @@ window.onload = function() {
     //drawResult2(ctx,(2*cols+3)*size,size,size);
     //drawTiles(ctx,(cols+2)*size,size,size);
 
+};
+
+window.onload = function() {
+    draw();
 };
 
 </script>

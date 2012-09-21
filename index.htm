@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Pac-Man Maze Generation</title>
+<script src="tetris/colors.js"></script>
+<script src="tetris/mapgen.js"></script>
+<script src="tetris/Map.js"></script>
+<script>
+
+var draw = function() {
+    var size = 40;
+
+    var canvas = document.getElementById('canvas');
+    canvas.width = 1024;
+    canvas.height = 1024;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = "#FFF";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    var map = mapgen();
+    var x,y;
+
+    x = size;
+    y = size;
+    drawCells(ctx,x,y,size,"Simple Model",{'drawNumbers':true});
+
+    x += (cols+1)*size;
+    drawCells(ctx,x,y,size,"Height Adjustments",{'drawRaiseHeightCandidate':true, 'drawRaiseHeight':true});
+
+    x += (cols+1)*size;
+    drawCells(ctx,x,y,size,"Width Adjustments",{'drawShrinkWidthCandidate':true, 'drawShrinkWidth':true});
+
+    x += (cols+1)*size;
+    drawCells(ctx,x,y,size,"Border Cells and Tunnels",
+        {'drawJoinCandidate':true,
+            'drawSingleDeadEnd':true,
+            'drawDoubleDeadEnd':true,
+            'drawVoidTunnel':true,
+            'drawEdgeTunnel':true,
+        });
+
+    x = size;
+    y += (rows+1)*size;
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.scale(2,2);
+    map.name = "Final Paths";
+    map.drawPath(ctx,0,0);
+    ctx.restore();
+
+    x = 13*size;
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.scale(2,2);
+    map.name = "Final Tiles";
+    map.draw(ctx,0,0,true);
+    ctx.restore();
+};
+
+window.onload = function() {
+    draw();
+};
+
+</script>
+<style>
+    body {
+        background:#AAA;
+    }
+    p, li {
+        line-height:1.5em;
+    }
+    #container {
+        padding: 20px;
+        background:#FFF;
+        width: 800px;
+        margin-left:auto;
+        margin-right:auto;
+    }
+    canvas {
+        width: 100%;
+    }
+</style>
+</head>
+<body>
+<div id="container">
+<p>
+<h1>Pac-Man Maze Generation</h1>
+<p>
+from the <a href="https://github.com/shaunew/Pac-Man">Pac-Man tribute project</a> by <a href="mailto:shaunewilliams@gmail.com">Shaun Williams</a>.
+</p>
+
+<button onclick="draw()">Click to generate new example</button>
+</p>
+<canvas id='canvas'></canvas>
+
+<p>
+
+<h2><span style="color:red">Work in Progress</span></h2>
+<p>
+<i>
+Generating random Pac-Man mazes is a deceptively difficult problem that I spent some months working on.  It is not easy to describe clearly.  I hope you are patient.  This page is an effort to begin communicating how the algorithm works.  It will slowly be refined (your feedback appreciated) until it is all stated as clearly as possible.
+</i>
+</p>
+
+<h2>Contraints</h2>
+<p>
+The mazes are built carefully to closely match design patterns deduced from the original maps found in Pac-Man and Ms. Pac-Man:
+</p>
+
+<ul>
+<li>Map is 28x31 tiles.</li>
+<li>Paths are only 1 tile thick</li>
+<li>No sharp turns (i.e. intersections are separated by atleast 2 tiles).</li>
+<li>There are 1 or 2 tunnels</li>
+<li>No dead-ends.</li>
+<li>Only I, L, T, or + wall shapes are allowed, including the occasional rectangular wall.</li>
+<li>Any non-rectangular wall pieces must only be 2 tiles thick.</li>
+</ul>
+
+<h2>It's like Tetris</h2>
+
+<p>
+We start by stacking tetris pieces on a 5x9 grid. Gravity pulls the pieces in the left direction rather than down.  The edges of the resulting tetris pieces correspond to walkable paths in the maze.  This grid is then mirrored across the left vertical axis to create a symmetric map, then scaled by 3 to form an original-size 28x31 map.
+</p>
+
+<h2>Definitions</h2>
+
+<p>
+For clarity, I call the squares in the initial 5x9 grid, <b>cells</b>, and the squares in the final 28x31 grid, <b>tiles</b>.  So, this algorithm first creates the <b>cells</b> and transforms them into <b>tiles</b>
+</p>
+
+<h2>Simple Model</h2>
+
+<p>
+Shown in the above diagram titled "Simple Model" is the 5x9 grid of tetris pieces.  The pieces are created one cell at a time using some algorithm to limit the type of pieces at certain locations (they are numbered to show the order of creation). 
+</p>
+
+<p>
+The ghost pen and the edge between rows 7 and 8 at column 1 are present in every map, since the starting location of Pac-Man and the ghost pen location are constant.
+</p>
+
+<h2>Height and Width Adjustments</h2>
+
+<p>
+Cells are directly transformed into a 3x3 group of tiles. Unfortunately, this creates a resulting map that is too short by 1 tile and too wide by 1 tile.  So, we increase the height of one cell for every column, and decrease the width of one cell for every row, allowing the generated map to fit in the exact dimensions of the original game.
+</p>
+
+<p>
+Shown in the above diagrams titled "Height Adjustments" and "Width Adjustments", the highlighted cells are the candidate cells whose size can be changed without creating ugly walls (i.e. walls that have non-uniform thickness).
+</p>
+
+<p>
+Arrows occupy cells which have been chosen for size adjustment.  Care is taken to prevent discontinuities in the edges as a result of the shifting of cells from the size change.
+</p>
+
+<h2>Border Cells and Tunnels</h2>
+
+<p>
+I won't explain too much about this right now.  But the above diagram titled "Border Cells and Tunnels" has arrows to indicate the tunnel candidates.  The highlighted cells show the type of tunnel candidates by color.  Some cell edges are erased to create some variation in how walls connect with the boundary of the map (shown in green).  The tunnel creation algorithm is sophisticated in how it chooses different types of tunnels.
+</p>
+
+<h2>Final Paths</h2>
+
+<p>
+When the cells are finally transformed into tiles, what you are left with is shown in the diagram above titled "Final Paths".  Here you can directly map a cell to a 3x3 group of tiles.  You can even pick out the cells whose height are width have been adjusted by 1 tile in this map.
+</p>
+
+<h2>Final Tiles</h2>
+
+<p>
+See how the above diagram titled "Final Tiles" differs from "Final Paths".  The paths are shifted from the tile <em>edges</em> toward the tile <em>centers</em>.  Each tile with a path going through its center is turned into a path tile.  Finally, any tile that touches a path tile becomes a wall tile.  The map structure is now complete.
+</p>
+
+<h2>Results</h2>
+
+<p>
+<a href="tetris/many.htm">Click here to see many generated Pac-Man mazes together.</a>
+</p>
+
+<p>
+Random mazes are used in from the Cookie-Man game mode, <a href="../index.htm">playable here.</a>
+</p>
+<img src="../shots/procedural.png" width="100%" />
+
+<h2>Appendix</h2>
+
+<h3>Original Maps</h3>
+<img src="img/origmaps_2x.png" width="100%" />
+
+<h3>Original Maps (plain)</h3>
+<img src="img/origmaps_2x_print.png" width="100%" />
+
+<h3>Original Maps (paths)</h3>
+<img src="img/origmaps_path.png" width="100%" />
+
+</div>
+</body>
+</html>

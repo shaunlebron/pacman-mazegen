@@ -1245,6 +1245,7 @@ var drawCells = function(ctx,left,top,size,title,options) {
     ctx.font = "bold " + size/3 + "px sans-serif";
     ctx.textBaseline = "bottom";
     ctx.textAlign = "left";
+    ctx.fillStyle = "#000";
     ctx.fillText(title, 0, -5);
 
     ctx.beginPath();
@@ -1424,6 +1425,8 @@ var drawTiles = function(ctx,left,top,size) {
 
     fillStyles = {
         '.' : 'rgba(0,0,0,0.4)',
+        'o' : 'rgba(0,0,0,0.4)',
+        ' ' : 'rgba(0,0,0,0.4)',
         '|' : 'rgba(0,0,0,0.1)',
         '-' : 'rgba(0,0,0,0.0)',
         '_' : 'rgba(0,0,0,0)',
@@ -1434,7 +1437,7 @@ var drawTiles = function(ctx,left,top,size) {
         x = i % fullcols;
         y = Math.floor(i/fullcols);
 
-        ctx.fillStyle = fillStyles[tiles[i]];
+        ctx.fillStyle = fillStyles[tiles[i]] || "#F00";
         ctx.fillRect(x*subsize,y*subsize,subsize,subsize);
     }
 
