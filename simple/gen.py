@@ -4,12 +4,15 @@ import sys
 mapwidth = 5
 mapheight = 9
 
+######################################################################
+# Define all possible pieces.
+
 class Piece:
 	def __init__(self):
 		pass
 
 	def setFromStr(self, s):
-		self.offsets = []
+		offsets = []
 		self.leftHeight = 0
 
 		y = 0
@@ -22,16 +25,18 @@ class Piece:
 						self.leftHeight += 1
 						if not foundTop:
 							foundTop = True
-							for p in self.offsets:
+							for p in offsets:
 								p[1] -= y
 							y = 0
 							x += 1
 							continue
-					self.offsets.append([x,y])
+					offsets.append([x,y])
 				x += 1
 			y += 1
 
-		self.offsets.append([0,0])
+		self.offsets = [(a[0],a[1]) for a in offsets]
+		self.offsets.append((0,0))
+
 		self.miny = min(y for x,y in self.offsets)
 		self.maxy = max(y for x,y in self.offsets)
 		self.maxx = max(x for x,y in self.offsets)
@@ -112,6 +117,9 @@ pieces = makePieces("""
 
 """)
 
+######################################################################
+# Determine valid pieces for each position regarding map boundaries.
+
 def makeValidPieceTable(pieces):
 	valid_pieces = {}
 	for x in xrange(mapwidth-1):
@@ -170,52 +178,30 @@ def makeValidPieceTable(pieces):
 
 valid_pieces = makeValidPieceTable(pieces)
 
-# A top config is a list of piece numbers, from top to bottom.
-top_configs = [
-	[3,6],
-	[3,1],
-	[4,1],
-	[5,4],
-	[5,2],
-	[1,3],
-	[1,4],
-	[1,2],
-	[2,6],
-	[2,1],
-	[0,3],
-	[0,4],
-	[0,6,1],
-	[9],
-]
-
-# A bottom config is a list of piece numbers, from top to bottom.
-bottom_configs = [
-	[3,3],
-	[3,4],
-	[3,2],
-	[4,3],
-	[3,5,0],
-	[3,6,1],
-	[3,6,0],
-	[3,1,0],
-	[4,4],
-	[4,5,0],
-	[4,1,0],
-	[4,2],
-	[1,5,4],
-	[1,5,2],
-	[2,3],
-	[2,4],
-	[2,6,1],
-	[2,6,0],
-	[2,1,0],
-]
+######################################################################
+# Create a tile map class for searching piece configurations.
 
 class TileMap:
 	def __init__(self):
 		self.w = mapwidth
 		self.h = mapheight
 		self.reset()
+
+	def getPieceList(self):
+		return [valid_pieces[(x,y)][i].index for i,x,y in self.piece_stack]
+
+	def getShell(self):
+		s = ""
+		for row in self.tiles:
+			for c in row:
+				if c == 0:
+					s += "0"
+				else:
+					s += "1"
+		return s
+
+	def getState(self):
+		return (self.getShell(), self.hasTopSquare, self.hasBottomSquare, self.numSize2, self.numSize5)
 
 	def reset(self):
 		self.tiles = [[0 for i in xrange(self.w)] for j in xrange(self.h)]
@@ -232,7 +218,9 @@ class TileMap:
 		self.hasTopSquare = False
 		self.hasBottomSquare = False
 		self.numSize2 = 0
+		self.maxSize2 = 2
 		self.numSize5 = 0
+		self.maxSize5 = 1
 
 	def setTopConfig(self,i):
 		x,y = 0,0
@@ -267,6 +255,17 @@ class TileMap:
 		return s
 
 	def canPieceFit(self,piece,x,y):
+		if piece.size == 1:
+			if y == 0 and self.hasTopSquare or self.hasBottomSquare:
+				return False
+		elif piece.size == 2:
+			if self.numSize2 == self.maxSize2:
+				return False
+		elif piece.size == 5:
+			if self.numSize5 == self.maxSize5:
+				return False
+		
+		# prevent two horizontal pieces from being on top of one another
 		if (piece.index == 1 and
 			(x,y-1) in self.pos_dict and
 			self.pos_dict[(x,y-1)] == 1):
@@ -293,12 +292,30 @@ class TileMap:
 		self.pos_dict[(x,y)] = piece.index
 		self.piece_stack.append((i,x,y))
 		self.writePiece(piece,x,y)
+		if piece.size == 1:
+			if y == 0:
+				self.hasTopSquare = True
+			else:
+				self.hasBottomSquare = True
+		elif piece.size == 2:
+			self.numSize2 += 1
+		elif piece.size == 5:
+			self.numSize5 += 1
 	
 	def popPiece(self):
 		i,x,y = self.piece_stack.pop()
 		self.pos_dict[(x,y)] = None
 		piece = valid_pieces[(x,y)][i]
 		self.erasePiece(piece,x,y)
+		if piece.size == 1:
+			if y == 0:
+				self.hasTopSquare = False
+			else:
+				self.hasBottomSquare = False
+		elif piece.size == 2:
+			self.numSize2 -= 1
+		elif piece.size == 5:
+			self.numSize5 -= 1
 		return i,x,y
 
 	def getNextOpenTile(self,x,y):
@@ -371,44 +388,54 @@ class TileMap:
 				# exit search
 				break
 
-# create a stack of added pieces and their locations for back-tracking
+######################################################################
+# Create preset piece configurations for segments of the map.
 
-# define limits
-#	number of different pieces
-#		one-cell pieces: 0-1
-#	placement of certain pieces
-#		one-cell piece: top or bottom row
+top_right_configs =    [p.index for p in pieces if p.size > 1 and (p.maxx,p.miny) in p.offsets]
+bottom_right_configs = [p.index for p in pieces if p.size > 1 and (p.maxx,p.maxy) in p.offsets]
+
+def createTopLeftConfigs():
+	configs = []
+	tile_map = TileMap()
+	shouldStop = lambda x,y: y > 2
+	def callback():
+		configs.append(tile_map.getPieceList())
+	tile_map.depthFirstSearch(0,0,solutionCallback=callback,shouldStop=shouldStop)
+	return configs
+
+def createBottomLeftConfigs():
+	configs = []
+	tile_map = TileMap()
+	shouldStop = lambda x,y: x > 0
+	def callback():
+		configs.append(tile_map.getPieceList())
+	tile_map.depthFirstSearch(0,5,solutionCallback=callback,shouldStop=shouldStop)
+	return configs
+
+top_left_configs = createTopLeftConfigs()
+bottom_left_configs = createBottomLeftConfigs()
+
+def printConfigInfo():
+	print "TOP LEFT", len(top_left_configs)
+	print "BOTTOM LEFT", len(bottom_left_configs)
+	print "TOP RIGHT", len(top_right_configs)
+	print "BOTTOM RIGHT", len(bottom_right_configs)
+
+	def printConfig(label, configs):
+		print label
+		for config in configs:
+			print config
+
+	printConfig("TOP LEFT", top_left_configs)
+	printConfig("BOTTOM LEFT", bottom_left_configs)
+	printConfig("TOP RIGHT", top_right_configs)
+	printConfig("BOTTOM RIGHT", bottom_right_configs)
+
+######################################################################
+# Main.
 
 def main():
-	tile_map = TileMap()
-
-	"""
-	print "TOPS"
-	tops = []
-	shouldStop = lambda x,y: y > 2
-	def solutionCallback():
-		tops.append(str(tile_map))
-		print tile_map
-	tile_map.depthFirstSearch(0,0,solutionCallback=solutionCallback,shouldStop=shouldStop)
-	print len(tops)
-
-	print "BOTTOMS"
-	bottoms = []
-	shouldStop = lambda x,y: x > 0
-	def solutionCallback():
-		bottoms.append(str(tile_map))
-		print tile_map
-	tile_map.depthFirstSearch(0,5,solutionCallback=solutionCallback,shouldStop=shouldStop)
-	print len(bottoms)
-	"""
-
-	starts = []
-	shouldStop = lambda x,y: x > 1
-	def solutionCallback():
-		starts.append(str(tile_map))
-		#print tile_map
-	tile_map.depthFirstSearch(0,0,solutionCallback=solutionCallback,shouldStop=shouldStop)
-	print len(starts)
+	printConfigInfo()
 
 if __name__ == "__main__":
 	main()
