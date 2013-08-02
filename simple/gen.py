@@ -11,7 +11,11 @@ class Piece:
 	def __init__(self):
 		pass
 
+	def __str__(self):
+		return self.string
+
 	def setFromStr(self, s):
+		self.string = s
 		offsets = []
 		self.leftHeight = 0
 
@@ -113,6 +117,54 @@ pieces = makePieces("""
 
  #   17
 ###
+ #
+
+###  18
+ #
+ #
+
+ #   19
+ #
+###
+
+#    20
+###
+#
+
+  #  21
+###
+  #
+
+#### 22
+ #
+
+#### 23
+  #
+
+ #   24
+####
+
+  #  25
+####
+
+#    26
+##
+#
+#
+
+#    27
+#
+##
+#
+
+ #   28
+##
+ #
+ #
+
+ #   29
+ #
+##
  #
 
 """)
@@ -238,10 +290,10 @@ class TileMap:
 
 	def setTile(self,x,y,c):
 		self.tiles[y][x] = c
-	
+
 	def getTile(self,x,y):
 		return self.tiles[y][x]
-	
+
 	def __str__(self):
 		s = ""
 		for row in self.tiles:
@@ -264,7 +316,7 @@ class TileMap:
 		elif piece.size == 5:
 			if self.numSize5 == self.maxSize5:
 				return False
-		
+
 		# prevent two horizontal pieces from being on top of one another
 		if (piece.index == 1 and
 			(x,y-1) in self.pos_dict and
@@ -286,9 +338,17 @@ class TileMap:
 		n = 0
 		for dx,dy in piece.offsets:
 			self.setTile(x+dx,y+dy,n)
-	
+
 	def pushPiece(self,i,x,y):
-		piece = valid_pieces[(x,y)][i]
+		if isinstance(i,Piece):
+			piece = i
+			i = 0
+			for j in valid_pieces[(x,y)]:
+				i += 1
+				if j == piece:
+					break
+		else:
+			piece = valid_pieces[(x,y)][i]
 		self.pos_dict[(x,y)] = piece.index
 		self.piece_stack.append((i,x,y))
 		self.writePiece(piece,x,y)
@@ -301,7 +361,7 @@ class TileMap:
 			self.numSize2 += 1
 		elif piece.size == 5:
 			self.numSize5 += 1
-	
+
 	def popPiece(self):
 		i,x,y = self.piece_stack.pop()
 		self.pos_dict[(x,y)] = None
@@ -354,7 +414,7 @@ class TileMap:
 					if debug:
 						print "SOLUTION:"
 						print self
-				else: 
+				else:
 					i = 0
 					x,y = pos
 
@@ -391,8 +451,8 @@ class TileMap:
 ######################################################################
 # Create preset piece configurations for segments of the map.
 
-top_right_configs =    [p.index for p in pieces if p.size > 1 and (p.maxx,p.miny) in p.offsets]
-bottom_right_configs = [p.index for p in pieces if p.size > 1 and (p.maxx,p.maxy) in p.offsets]
+top_right_configs =    [[p.index] for p in pieces if p.size > 1 and (p.maxx,p.miny) in p.offsets]
+bottom_right_configs = [[p.index] for p in pieces if p.size > 1 and (p.maxx,p.maxy) in p.offsets]
 
 def createTopLeftConfigs():
 	configs = []
@@ -431,11 +491,51 @@ def printConfigInfo():
 	printConfig("TOP RIGHT", top_right_configs)
 	printConfig("BOTTOM RIGHT", bottom_right_configs)
 
+def findTopConfigs():
+	configs = []
+	tile_map = TileMap()
+	for i,tl in enumerate(top_left_configs):
+		tile_map.reset()
+		x,y = 0,0
+		for p in tl:
+			piece = pieces[p]
+			tile_map.pushPiece(piece,x,y)
+			x,y = tile_map.getNextOpenTile(x,y)
+		for j,tr in enumerate(top_right_configs):
+			piece = pieces[tr[0]]
+			x = mapwidth-1-piece.maxx
+			y = -piece.miny
+			if tile_map.canPieceFit(piece,x,y):
+				configs.append((i,j))
+	return configs
+	
+
+def findBottomConfigs():
+	configs = []
+	tile_map = TileMap()
+	for i,bl in enumerate(bottom_left_configs):
+		tile_map.reset()
+		x,y = 0,5
+		for p in bl:
+			piece = pieces[p]
+			tile_map.pushPiece(piece,x,y)
+			x,y = tile_map.getNextOpenTile(x,y)
+		for j,br in enumerate(bottom_right_configs):
+			piece = pieces[br[0]]
+			x = mapwidth-1-piece.maxx
+			y = mapheight-1-piece.maxy
+			if tile_map.canPieceFit(piece,x,y):
+				configs.append((i,j))
+	return configs
+
+top_configs = findTopConfigs()
+bottom_configs = findBottomConfigs()
+
 ######################################################################
 # Main.
 
 def main():
-	printConfigInfo()
+	print len(top_configs), len(bottom_configs)
 
 if __name__ == "__main__":
 	main()
