@@ -1,5 +1,6 @@
 
 import sys
+import random
 
 mapwidth = 5
 mapheight = 9
@@ -228,6 +229,10 @@ def makeValidPieceTable(pieces):
 
 	return valid_pieces
 
+def shuffleValidPieces(v):
+	for a in v.values():
+		random.shuffle(a)
+
 valid_pieces = makeValidPieceTable(pieces)
 
 ######################################################################
@@ -308,7 +313,13 @@ class TileMap:
 
 	def canPieceFit(self,piece,x,y):
 		if piece.size == 1:
-			if y == 0 and self.hasTopSquare or self.hasBottomSquare:
+			if y == 0:
+				if self.hasTopSquare:
+					return False
+			elif y == self.h-1:
+				if self.hasBottomSquare:
+					return False
+			else:
 				return False
 		elif piece.size == 2:
 			if self.numSize2 == self.maxSize2:
@@ -333,11 +344,33 @@ class TileMap:
 		for dx,dy in piece.offsets:
 			self.setTile(x+dx,y+dy,n)
 
+		# update constraints
+		if piece.size == 1:
+			if y == 0:
+				self.hasTopSquare = True
+			else:
+				self.hasBottomSquare = True
+		elif piece.size == 2:
+			self.numSize2 += 1
+		elif piece.size == 5:
+			self.numSize5 += 1
+
 	def erasePiece(self,piece,x,y):
 		self.num_pieces -= 1
 		n = 0
 		for dx,dy in piece.offsets:
 			self.setTile(x+dx,y+dy,n)
+
+		# update constraints
+		if piece.size == 1:
+			if y == 0:
+				self.hasTopSquare = False
+			else:
+				self.hasBottomSquare = False
+		elif piece.size == 2:
+			self.numSize2 -= 1
+		elif piece.size == 5:
+			self.numSize5 -= 1
 
 	def pushPiece(self,i,x,y):
 		if isinstance(i,Piece):
@@ -352,30 +385,12 @@ class TileMap:
 		self.pos_dict[(x,y)] = piece.index
 		self.piece_stack.append((i,x,y))
 		self.writePiece(piece,x,y)
-		if piece.size == 1:
-			if y == 0:
-				self.hasTopSquare = True
-			else:
-				self.hasBottomSquare = True
-		elif piece.size == 2:
-			self.numSize2 += 1
-		elif piece.size == 5:
-			self.numSize5 += 1
 
 	def popPiece(self):
 		i,x,y = self.piece_stack.pop()
 		self.pos_dict[(x,y)] = None
 		piece = valid_pieces[(x,y)][i]
 		self.erasePiece(piece,x,y)
-		if piece.size == 1:
-			if y == 0:
-				self.hasTopSquare = False
-			else:
-				self.hasBottomSquare = False
-		elif piece.size == 2:
-			self.numSize2 -= 1
-		elif piece.size == 5:
-			self.numSize5 -= 1
 		return i,x,y
 
 	def getNextOpenTile(self,x,y):
@@ -414,6 +429,8 @@ class TileMap:
 					if debug:
 						print "SOLUTION:"
 						print self
+					if shouldStop and shouldStop(None,None):
+						break # stop search
 				else:
 					i = 0
 					x,y = pos
@@ -491,6 +508,16 @@ def printConfigInfo():
 	printConfig("TOP RIGHT", top_right_configs)
 	printConfig("BOTTOM RIGHT", bottom_right_configs)
 
+def getTopRightXY(piece):
+	x = mapwidth-1-piece.maxx
+	y = -piece.miny
+	return x,y
+
+def getBottomRightXY(piece):
+	x = mapwidth-1-piece.maxx
+	y = mapheight-1-piece.maxy
+	return x,y
+
 def findTopConfigs():
 	configs = []
 	tile_map = TileMap()
@@ -503,8 +530,7 @@ def findTopConfigs():
 			x,y = tile_map.getNextOpenTile(x,y)
 		for j,tr in enumerate(top_right_configs):
 			piece = pieces[tr[0]]
-			x = mapwidth-1-piece.maxx
-			y = -piece.miny
+			x,y = getTopRightXY(piece)
 			if tile_map.canPieceFit(piece,x,y):
 				configs.append((i,j))
 	return configs
@@ -522,8 +548,7 @@ def findBottomConfigs():
 			x,y = tile_map.getNextOpenTile(x,y)
 		for j,br in enumerate(bottom_right_configs):
 			piece = pieces[br[0]]
-			x = mapwidth-1-piece.maxx
-			y = mapheight-1-piece.maxy
+			x,y = getBottomRightXY(piece)
 			if tile_map.canPieceFit(piece,x,y):
 				configs.append((i,j))
 	return configs
@@ -531,11 +556,123 @@ def findBottomConfigs():
 top_configs = findTopConfigs()
 bottom_configs = findBottomConfigs()
 
+def getAllConfigs():
+	configs = []
+	for i,tc in enumerate(top_configs):
+		tl_index,tr_index = tc
+		tl_config = top_left_configs[tl_index]
+		tr_config = top_right_configs[tr_index]
+		for j,bc in enumerate(bottom_configs):
+			bl_index,br_index = bc
+			bl_config = bottom_left_configs[bl_index]
+			br_config = bottom_right_configs[br_index]
+
+			# Write the top left and bottom left configs
+			x,y = 0,0
+			tile_map = TileMap()
+			valid = True
+			for p in tl_config + bl_config:
+				piece = pieces[p]
+				if tile_map.canPieceFit(piece,x,y):
+					tile_map.writePiece(piece,x,y)
+				else:
+					valid = False
+					break
+				x,y = tile_map.getNextOpenTile(x,y)
+
+			if valid:
+				# Write the top right config
+				piece = pieces[tr_config[0]]
+				x,y = getTopRightXY(piece)
+				if tile_map.canPieceFit(piece,x,y):
+					tile_map.writePiece(piece,x,y)
+				else:
+					valid = False
+
+			if valid:
+				# Write the bottom right config
+				piece = pieces[br_config[0]]
+				x,y = getBottomRightXY(piece)
+				if tile_map.canPieceFit(piece,x,y):
+					tile_map.writePiece(piece,x,y)
+				else:
+					valid = False
+			
+			if valid:
+				configs.append((i,j))
+				
+	return configs
+
+all_configs = getAllConfigs()
+
+def makePresetTileMap(i):
+	top_config, bottom_config = all_configs[i]
+
+	# Get configs
+	tl_index,tr_index = top_configs[top_config]
+	bl_index,br_index = bottom_configs[bottom_config]
+	tl_config = top_left_configs[tl_index]
+	tr_config = top_right_configs[tr_index]
+	bl_config = bottom_left_configs[bl_index]
+	br_config = bottom_right_configs[br_index]
+
+	#print "top indexes:",tl_index, tr_index
+	#print "bottom indexes:",bl_index, br_index
+	#print "topleft:",tl_config
+	#print "bottomleft:",bl_config
+	#print "topright:",tr_config
+	#print "bottomright:",br_config
+
+	# Make tile map
+	tile_map = TileMap()
+	tile_map.preset_segments = [tl_index, tr_index, bl_index, br_index]
+	tile_map.preset_pieces = [
+		pieces[tr_config[0]].index,
+		pieces[br_config[0]].index,
+	]
+
+	# Write the top left and bottom left configs
+	x,y = 0,0
+	for p in tl_config+bl_config:
+		piece = pieces[p]
+		tile_map.preset_pieces.append(piece.index)
+		tile_map.writePiece(piece,x,y)
+		x,y = tile_map.getNextOpenTile(x,y)
+
+	# Write the top right config
+	piece = pieces[tr_config[0]]
+	x,y = getTopRightXY(piece)
+	tile_map.writePiece(piece,x,y)
+
+	# Write the bottom right config
+	piece = pieces[br_config[0]]
+	x,y = getBottomRightXY(piece)
+	tile_map.writePiece(piece,x,y)
+
+	return tile_map
+
+def genMapForAllRoots():
+	numRoots = len(all_configs)
+
+	shouldStop = lambda x,y: x is None and y is None
+	for i in xrange(numRoots):
+		shuffleValidPieces(valid_pieces)
+		print >> sys.stderr, "%d / %d:" % (i+1,numRoots)
+		tile_map = makePresetTileMap(i)
+		success = [False]
+		def callback():
+			success[0] = True
+		x,y = tile_map.getNextOpenTile(0,0)
+		tile_map.depthFirstSearch(x,y,solutionCallback=callback,shouldStop=shouldStop)
+		if success[0]:
+			print tile_map.preset_segments, tile_map.preset_pieces
+
+
 ######################################################################
 # Main.
 
 def main():
-	print len(top_configs), len(bottom_configs)
+	genMapForAllRoots()
 
 if __name__ == "__main__":
 	main()
