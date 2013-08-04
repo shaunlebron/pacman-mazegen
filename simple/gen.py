@@ -478,14 +478,19 @@ class TileMap:
 				self.pushPiece(i,x,y)
 				pos = self.getNextOpenTile(x,y)
 				if not pos:
-					if solutionCallback:
-						solutionCallback()
-					if debug:
-						print "SOLUTION:"
-						print self
-					if shouldStop and shouldStop(None,None):
-						self.buildCells()
-						break # stop search
+					self.buildCells()
+					self.setResizeCandidates()
+					if self.chooseTallRows() and self.chooseNarrowCols():
+						if solutionCallback:
+							solutionCallback()
+						if debug:
+							print "SOLUTION:"
+							print self
+						if shouldStop and shouldStop(None,None):
+							break # stop search
+						else:
+							# TODO: set x,y to position before the first offending row or col that prevented resize
+							pass
 				else:
 					i = 0
 					x,y = pos
@@ -521,10 +526,49 @@ class TileMap:
 				break
 
 	def setResizeCandidates(self):
-		pass
+		for y in xrange(mapheight):
+			for x in xrange(mapwidth):
+				c = self.cells[y][x]
+				q = c.connect
+
+				#         _
+				# |_| or | |
+				if not q[LEFT] and not q[RIGHT] and (not q[UP] or not q[DOWN]):
+					c.isRaiseHeightCandidate = True
+
+				#  __
+				# |__|
+				if x+1 < mapwidth:
+					cr = c.nextCells[RIGHT]
+					qr = cr.connect
+					if (not q[LEFT]   and not q[UP]  and not q[DOWN]  and q[RIGHT] and
+						not qr[RIGHT] and not qr[UP] and not qr[DOWN] and qr[LEFT]):
+						c.isRaiseHeightCandidate = cr.isRaiseHeightCandidate = True
+
+				# _      _
+				# _| or |_
+				if not q[UP] and not q[DOWN] and q[LEFT] != q[RIGHT]:
+					c.isShrinkWidthCandidate = True
+
+				# empty cell on right border
+				if x == mapwidth-1 and self.getTile(x,y) == 0:
+					c.isShrinkWidthCandidate = True
+
+				# _
+				#  |
+				# _|
+				if y+1 < mapheight:
+					cd = c.nextCells[DOWN]
+					qd = cd.connect
+					if (q[LEFT]  and not q[UP]    and not q[RIGHT]  and q[DOWN] and
+						qd[LEFT] and not qd[DOWN] and not qd[RIGHT] and qd[UP]):
+						c.isShrinkWidthCandidate = cd.isShrinkWidthCandidate = True
 	
 	def chooseTallRows(self):
-		pass
+		return True
+	
+	def chooseNarrowCols(self):
+		return True
 
 ######################################################################
 # Create preset piece configurations for segments of the map.
