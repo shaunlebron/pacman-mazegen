@@ -238,10 +238,45 @@ valid_pieces = makeValidPieceTable(pieces)
 ######################################################################
 # Create a tile map class for searching piece configurations.
 
+UP = 0
+RIGHT = 1
+DOWN = 2
+LEFT = 3
+
+class Cell:
+	def __init__(self,tile_map,x,y):
+		self.x = x
+		self.y = y
+		self.nextCells = [None] * 4
+		def isConnected(d):
+			dx = [0,1,0,-1][d]
+			dy = [-1,0,1,0][d]
+
+			# make sure connection is horizontally reflected at x==0
+			if x == 0 and dx == -1:
+				dx = 1
+
+			val = tile_map.getTile(x,y)
+
+			# empty tiles (always on the right side in a completed map) always open to the right
+			#if val == 0 and x == mapwidth-1 and dx = 1:
+			#	return True
+
+			x0 = x+dx
+			y0 = y+dy
+
+			if x0 < 0 or x0 >= mapwidth or y0 < 0 or y0 >= mapheight:
+				return False
+
+			adjacentVal = tile_map.getTile(x0,y0)
+
+			return val == adjacentVal
+
+		self.connect = [isConnected(i) for i in xrange(4)]
+
+
 class TileMap:
 	def __init__(self):
-		self.w = mapwidth
-		self.h = mapheight
 		self.reset()
 
 	def getPieceList(self):
@@ -261,7 +296,7 @@ class TileMap:
 		return (self.getShell(), self.hasTopSquare, self.hasBottomSquare, self.numSize2, self.numSize5)
 
 	def reset(self):
-		self.tiles = [[0 for i in xrange(self.w)] for j in xrange(self.h)]
+		self.tiles = [[0 for i in xrange(mapwidth)] for j in xrange(mapheight)]
 		self.setTile(0,3,1)
 		self.setTile(1,3,1)
 		self.setTile(0,4,1)
@@ -269,7 +304,7 @@ class TileMap:
 		self.num_pieces = 1
 
 		self.piece_stack = []
-		self.pos_dict = dict(((x,y),None) for x in range(self.w-1) for y in range(self.h))
+		self.pos_dict = dict(((x,y),None) for x in range(mapwidth-1) for y in range(mapheight))
 
 		# state
 		self.hasTopSquare = False
@@ -298,6 +333,25 @@ class TileMap:
 
 	def getTile(self,x,y):
 		return self.tiles[y][x]
+	
+	def buildCells(self):
+		# build table of cells
+		self.cells = [[Cell(self,x,y) for x in xrange(mapwidth)] for y in xrange(mapheight)]
+
+		# allow the referencing of adjacent cells
+		for y in xrange(mapheight):
+			for x in xrange(mapwidth):
+				c = self.cells[y][x]
+
+				if y+1 < mapheight:
+					cd = self.cells[y+1][x]
+					c.nextCells[DOWN] = cd
+					cd.nextCells[UP] = c
+
+				if x+1 < mapwidth:
+					cr = self.cells[y][x+1]
+					c.nextCells[RIGHT] = cr
+					cr.nextCells[LEFT] = c
 
 	def __str__(self):
 		s = ""
@@ -316,7 +370,7 @@ class TileMap:
 			if y == 0:
 				if self.hasTopSquare:
 					return False
-			elif y == self.h-1:
+			elif y == mapheight-1:
 				if self.hasBottomSquare:
 					return False
 			else:
@@ -394,8 +448,8 @@ class TileMap:
 		return i,x,y
 
 	def getNextOpenTile(self,x,y):
-		for x0 in xrange(x,self.w-1):
-			for y0 in xrange(y,self.h):
+		for x0 in xrange(x,mapwidth-1):
+			for y0 in xrange(y,mapheight):
 				if self.getTile(x0,y0) == 0:
 					return x0,y0
 			y = 0
@@ -430,6 +484,7 @@ class TileMap:
 						print "SOLUTION:"
 						print self
 					if shouldStop and shouldStop(None,None):
+						self.buildCells()
 						break # stop search
 				else:
 					i = 0
@@ -464,6 +519,12 @@ class TileMap:
 			except IndexError:
 				# exit search
 				break
+
+	def setResizeCandidates(self):
+		pass
+	
+	def chooseTallRows(self):
+		pass
 
 ######################################################################
 # Create preset piece configurations for segments of the map.
