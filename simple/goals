@@ -1,0 +1,43 @@
+
+We want a tool to help enumerate all possible maps, but mostly sub-maps because:
+	- there are too many to generate
+	- sub-maps will help us identify choke points for focusing on segments
+	- identifying patterns that can help us compress our representation of these mazes in z90
+
+Generating all cases up to x=2 y=4:
+	time: 8 minutes
+	number of solutions: 10 million
+
+	time growth: factor of 
+
+	on the order of 10 trillion solutions
+
+Don't bother generating all, but identify unique pairings of KEYS and STATES
+	- this will allow us to FOLD
+	- a KEY = a silhouette of the current structure of a map
+	- a STATE = current counters for piece limits
+
+We need a way to save and load intermediate results:
+
+Perhaps a good enough shorcut to generate these maps would be to come up with
+an algorithm for jumping between a given set of maps that we find to be valid.
+
+
+A map is represented as a sequence of piece numbers to be stacked top to bottom, left to right.
+
+------------------
+
+Steps toward z80
+
+* Find simple way to generate valid tilings of 5x9 map
+* Prune out tilings that cannot be height- and width-adjusted
+* Scale up to game tiles
+* Add tunnels
+* Add fruit paths
+* Add pellets
+* Add energizers
+
+
+------------------
+
+
