@@ -14,7 +14,7 @@ classic.
 Status
 ------
 
-<a href="http://shaunew.github.com/Pac-Man/mapgen">Click here to read the article explaining the current solution</a>
+<a href="http://shaunlebron.github.com/pacman-mazegen">Click here to read the article explaining the current solution</a>
 
 History
 -------
