@@ -1,3 +1,6 @@
+_This is research I did in the summer of 2012. It was part of a larger Pac-Man
+remake project that was given a [DMCA notice](https://github.com/github/dmca/blob/master/2012/2012-09-25-namco.markdown),
+so I separated the legal maze generator into this repo here._
 
 Pac-Man Map Generator
 =====================
@@ -14,7 +17,7 @@ classic.
 Status
 ------
 
-<a href="http://shaunlebron.github.com/pacman-mazegen">Click here to read the article explaining the current solution</a>
+Tetris solution works best. <a href="http://shaunlebron.github.com/pacman-mazegen">Click here to read the explanation.</a>
 
 History
 -------
