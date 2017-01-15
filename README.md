@@ -1,4 +1,4 @@
-# Pac-Man Map Generator
+# Pac-Man Maze Generator
 
 Generating random mazes aesthetically similar to those found in Pac-Man and Ms. Pac-Man.
 The [tetris](tetris) solution yielded best results:
