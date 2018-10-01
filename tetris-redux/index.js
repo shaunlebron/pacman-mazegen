@@ -90,6 +90,8 @@ function makeState() {
     numFilled: 0,
     numGroups: 0,
 
+    size: 0,
+
     singleCount: {
       0: 0,
       [numRows - 1]: 0
@@ -136,7 +138,7 @@ function startNewGroup(state) {
   if (cell) {
     fillCell(state, cell);
     state.firstCell = state.cell = cell;
-    return true;
+    return cell;
   }
 }
 
@@ -144,11 +146,20 @@ function genRandomCells() {
   const state = makeState();
 
   while (true) {
-    if (!startNewGroup(state)) break;
+    const cell = startNewGroup(state);
+    if (!cell) break;
+
     if (trySingleCellGroup(state)) continue;
 
-    console.log(state);
+    state.size = 1;
 
+    if (cell.x === numCols - 1) {
+      cell.connect[RIGHT] = true;
+      cell.isRaiseHeightCandidate = true;
+      continue;
+    }
+
+    console.log(state);
     break;
 
     state.numGroups++;
