@@ -79,9 +79,75 @@ function getLeftMostEmptyCells(table) {
   return leftCells;
 }
 
+function makeState() {
+  return {
+    cell: null,
+    firstCell: null,
+    firstCell: null,
+
+    numFilled: 0,
+    numGroups: 0,
+
+    singleCount: {
+      0: 0,
+      [numRows - 1]: 0
+    }
+  };
+}
+
+function fillCell(state, cell) {
+  cell.filled = true;
+  cell.no = state.numFilled++;
+  cell.group = state.numGroups;
+}
+
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randomElement(list) {
+  const n = list.length;
+  if (n > 0) return list[getRandomInt(0, n - 1)];
+}
+
+const probTopAndBotSingleCellJoin = 0.35;
+
+function trySingleCellGroup(state) {
+  const { cell, singleCount } = state;
+  // randomly allow one single-cell piece on the top or bottom of the map.
+  if (
+    cell.x < numCols - 1 &&
+    cell.y in singleCount &&
+    Math.random() <= probTopAndBotSingleCellJoin &&
+    singleCount[cell.y] == 0
+  ) {
+    cell.connect[cell.y == 0 ? UP : DOWN] = true;
+    singleCount[cell.y]++;
+    console.log("single cell group");
+    return true;
+  } else {
+    console.log("NOT single cell group");
+  }
+}
+
 function genRandomCells() {
   const { table } = makeCells();
-  console.log(getLeftMostEmptyCells(table));
+  const state = makeState();
+
+  while (true) {
+    const openCells = getLeftMostEmptyCells(table);
+    if (openCells.length === 0) break;
+
+    // choose the center cell to be a random open cell, and fill it.
+    state.firstCell = state.cell = randomElement(openCells);
+    fillCell(state, state.cell);
+
+    if (trySingleCellGroup(state)) continue;
+
+    break;
+
+    state.numGroups++;
+  }
 }
 
 genRandomCells();
