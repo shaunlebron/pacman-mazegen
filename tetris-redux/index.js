@@ -67,4 +67,21 @@ function makeCells() {
   return { table, cells };
 }
 
-console.log(makeCells());
+function getLeftMostEmptyCells(table) {
+  const leftCells = [];
+  for (let x = 0; x < numCols; x++) {
+    for (let y = 0; y < numRows; y++) {
+      const c = table[y][x];
+      if (!c.filled) leftCells.push(c);
+    }
+    if (leftCells.length > 0) break;
+  }
+  return leftCells;
+}
+
+function genRandomCells() {
+  const { table } = makeCells();
+  console.log(getLeftMostEmptyCells(table));
+}
+
+genRandomCells();
