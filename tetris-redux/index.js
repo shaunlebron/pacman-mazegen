@@ -39,7 +39,7 @@ function setGhostHomeCells(table) {
   c.connect[UP] = c.connect[LEFT] = true;
 }
 
-function makeCells() {
+function makeTable() {
   // initialize cells
   const table = [];
   const cells = [];
@@ -64,7 +64,7 @@ function makeCells() {
 
   setGhostHomeCells(table);
 
-  return { table, cells };
+  return table;
 }
 
 function getLeftMostEmptyCells(table) {
@@ -81,6 +81,8 @@ function getLeftMostEmptyCells(table) {
 
 function makeState() {
   return {
+    table: makeTable(),
+
     cell: null,
     firstCell: null,
     firstCell: null,
@@ -110,7 +112,7 @@ function randomElement(list) {
   if (n > 0) return list[getRandomInt(0, n - 1)];
 }
 
-const probTopAndBotSingleCellJoin = 0.35;
+const probTopAndBotSingleCellJoin = 1;
 
 function trySingleCellGroup(state) {
   const { cell, singleCount } = state;
@@ -123,26 +125,29 @@ function trySingleCellGroup(state) {
   ) {
     cell.connect[cell.y == 0 ? UP : DOWN] = true;
     singleCount[cell.y]++;
-    console.log("single cell group");
     return true;
-  } else {
-    console.log("NOT single cell group");
+  }
+}
+
+function startNewGroup(state) {
+  const { table } = state;
+  const openCells = getLeftMostEmptyCells(table);
+  const cell = randomElement(openCells);
+  if (cell) {
+    fillCell(state, cell);
+    state.firstCell = state.cell = cell;
+    return true;
   }
 }
 
 function genRandomCells() {
-  const { table } = makeCells();
   const state = makeState();
 
   while (true) {
-    const openCells = getLeftMostEmptyCells(table);
-    if (openCells.length === 0) break;
-
-    // choose the center cell to be a random open cell, and fill it.
-    state.firstCell = state.cell = randomElement(openCells);
-    fillCell(state, state.cell);
-
+    if (!startNewGroup(state)) break;
     if (trySingleCellGroup(state)) continue;
+
+    console.log(state);
 
     break;
 
